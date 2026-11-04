@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Radar de Mercados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}body{margin:0}
+
+/* Layout: lista de activos arriba (resumen), ficha detallada del activo elegido debajo; una columna en móvil. */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#16202b; --muted:#5d6b7a; --line:#d5dce4;
+  --brass:#a07316; --brass-soft:#f3e8cf;
+  --up:#1d7a4f; --up-soft:#dcefe5; --down:#b4372f; --down-soft:#f6dedb; --flat:#6b7685; --flat-soft:#e6e9ee;
+  --sma50:#3b6fb6; --sma200:#a07316;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f151c; --panel:#17202a; --ink:#e4e9ef; --muted:#93a1b0; --line:#2a3644;
+  --brass:#d9a845; --brass-soft:#3a2f17;
+  --up:#4cc38a; --up-soft:#173327; --down:#ef7a70; --down-soft:#3d1f1d; --flat:#9aa6b4; --flat-soft:#232d39;
+  --sma50:#6f9fe0; --sma200:#d9a845; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f151c; --panel:#17202a; --ink:#e4e9ef; --muted:#93a1b0; --line:#2a3644;
+  --brass:#d9a845; --brass-soft:#3a2f17;
+  --up:#4cc38a; --up-soft:#173327; --down:#ef7a70; --down-soft:#3d1f1d; --flat:#9aa6b4; --flat-soft:#232d39;
+  --sma50:#6f9fe0; --sma200:#d9a845; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{max-width:1040px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+h1{font-family:var(--f-display);font-weight:600;font-size:clamp(26px,5vw,34px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h1 span{color:var(--brass)}
+.sub{color:var(--muted);font-size:13px}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+h2{font-family:var(--f-display);font-weight:600;font-size:22px;margin:0;text-wrap:balance}
+h3{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+
+/* Lista */
+.lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.fila{all:unset;box-sizing:border-box;cursor:pointer;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;min-width:0}
+.fila:hover{border-color:var(--muted)}
+.fila:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+.fila[aria-pressed="true"]{border-color:var(--brass);box-shadow:inset 0 0 0 1px var(--brass)}
+.fila .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.sym{font-family:var(--f-mono);font-weight:500;font-size:16px}
+.nom{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.precio{font-family:var(--f-mono);font-size:20px;font-variant-numeric:tabular-nums}
+.var.up{color:var(--up)} .var.down{color:var(--down)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.pill.up{background:var(--up-soft);color:var(--up)} .pill.down{background:var(--down-soft);color:var(--down)} .pill.flat{background:var(--flat-soft);color:var(--flat)}
+.gauge{position:relative;height:6px;background:linear-gradient(90deg,var(--down-soft),var(--flat-soft) 50%,var(--up-soft));border-radius:3px}
+.gauge::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--muted)}
+.gauge i{position:absolute;top:-4px;width:4px;height:14px;border-radius:2px;background:var(--ink);transform:translateX(-50%)}
+
+/* Ficha */
+.ficha{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;display:grid;gap:22px;min-width:0}
+.ficha-top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between}
+.big{font-family:var(--f-mono);font-size:32px;font-variant-numeric:tabular-nums;line-height:1.1}
+.veredicto{display:grid;gap:6px;justify-items:end;text-align:right}
+.veredicto .pill{font-size:14px;padding:4px 12px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px}
+.grid2>*{min-width:0}
+.chart{width:100%;overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:320px;height:auto}
+.leyenda{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted)}
+.leyenda b{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font-size:14px}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+ul.motivos{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:14px}
+ul.motivos li{display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:baseline}
+ul.motivos .peso{font-family:var(--f-mono);font-size:12px;text-align:right}
+.tabla{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:420px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+th{font-family:var(--f-body);font-weight:600;color:var(--muted);font-size:12px}
+th:first-child,td:first-child{text-align:left}
+.contexto{background:var(--brass-soft);border-radius:8px;padding:14px 16px;font-size:14px;max-width:72ch}
+.contexto p{margin:0 0 8px} .contexto p:last-child{margin:0}
+.contexto a{color:var(--ink)}
+.nota{font-size:12px;color:var(--muted);max-width:80ch}
+.niveles{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-family:var(--f-mono);font-size:13px}
+.chip small{font-family:var(--f-body);color:var(--muted);margin-right:6px}
+
+/* Pedir */
+form.pedir{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--panel);border:1px dashed var(--line);border-radius:10px;padding:14px}
+form.pedir label{font-weight:600;font-size:14px;flex-basis:100%}
+form.pedir input{font:inherit;font-family:var(--f-mono);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:140px;text-transform:uppercase}
+form.pedir button{font:inherit;font-weight:600;padding:8px 14px;border-radius:6px;border:0;background:var(--ink);color:var(--panel);cursor:pointer}
+form.pedir button:focus-visible,form.pedir input:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+form.pedir .msg{font-size:13px;color:var(--muted);flex-basis:100%}
+.vacio{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:24px;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.fila{transition:border-color .15s}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>Radar de <span>Mercados</span></h1>
+    <div class="sub" id="actualizado">Cargando datos…</div>
+  </header>
+
+  <section aria-label="Activos" class="lista" id="lista"></section>
+  <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Claude en el chat.</div>
+
+  <article class="ficha" id="ficha" hidden></article>
+
+  <form class="pedir" id="pedir">
+    <label for="tk">Agregar un activo a la lista</label>
+    <input id="tk" name="tk" placeholder="Ej. NVDA" maxlength="12" autocomplete="off" required>
+    <button type="submit">Agregar</button>
+    <div class="msg" id="msg">Acciones de EE. UU. por su ticker; materias primas: GC=F oro, SI=F plata, CL=F petróleo, HG=F cobre. Se analiza en la próxima actualización diaria.</div>
+  </form>
+
+  <p class="nota">Precios de Yahoo Finance con retraso. El puntaje combina señales técnicas (tendencia, promedios, RSI, MACD) y fundamentales (crecimiento, márgenes, rentabilidad, deuda, valoración) en una escala de −100 a +100. Los niveles de stop y objetivo son referenciales (2 y 3 veces el rango diario promedio). Es información para tu propio análisis, no una recomendación de compra o venta.</p>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let activos=[], elegido=null;
+try{elegido=localStorage.getItem("radar-elegido")}catch(e){}
+
+const fmt=(n,d=2)=>n==null||isNaN(n)?"—":Number(n).toLocaleString("es-PE",{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtM=n=>{if(n==null)return"—";const a=Math.abs(n);return(a>=1e9?fmt(n/1e9,2)+" mil M":a>=1e6?fmt(n/1e6,1)+" M":fmt(n,0))};
+const sgn=n=>n==null?"—":(n>0?"+":"")+fmt(n,n%1?1:0);
+const clase=s=>s>=10?"up":s<=-10?"down":"flat";
+const varTxt=v=>v==null?"":`<span class="var ${v>0?"up":v<0?"down":""} num">${v>0?"+":""}${fmt(v,2)}%</span>`;
+const pos=s=>((Math.max(-100,Math.min(100,s))+100)/2)+"%";
+
+function renderLista(){
+  $("#vacio").hidden=activos.length>0;
+  $("#lista").innerHTML=activos.map(a=>{
+    if(a.error)return `<div class="fila"><div class="top"><span class="sym">${esc(a.simbolo)}</span></div><div class="nom">No se pudo analizar: ${esc(a.error)}</div></div>`;
+    const t=a.tecnico;
+    return `<button class="fila" data-s="${esc(a.simbolo)}" aria-pressed="${a.simbolo===elegido}">
+      <div class="top"><span class="sym">${esc(a.simbolo)}</span>${varTxt(t.var_dia)}</div>
+      <div class="nom">${esc(a.nombre)}</div>
+      <div class="top"><span class="precio">${fmt(t.precio)}</span><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span></div>
+      <div class="gauge" title="Puntaje ${a.puntaje_total}"><i style="left:${pos(a.puntaje_total)}"></i></div>
+    </button>`}).join("");
+  document.querySelectorAll(".fila[data-s]").forEach(b=>b.onclick=()=>{elegido=b.dataset.s;try{localStorage.setItem("radar-elegido",elegido)}catch(e){};renderLista();renderFicha();$("#ficha").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"})});
+}
+
+function chart(a){
+  const t=a.tecnico,F=t.fechas||[],C=t.cierres||[],S5=t.sma50s||[],S2=t.sma200s||[];
+  if(C.length<2)return"";
+  const W=720,H=280,L=56,R=12,T=12,B=28;
+  const vals=[...C,...S5,...S2].filter(v=>v!=null);
+  let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.06;lo-=pad;hi+=pad;
+  const x=i=>L+i*(W-L-R)/(C.length-1), y=v=>T+(hi-v)*(H-T-B)/(hi-lo);
+  const path=arr=>{let d="",on=false;arr.forEach((v,i)=>{if(v==null){on=false;return}d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);on=true});return d};
+  const step=(hi-lo)/4;let grid="";
+  for(let k=0;k<=4;k++){const v=lo+step*k;grid+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${fmt(v,v>=1000?0:2)}</text>`}
+  const meses=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];let xl="",prev="";
+  F.forEach((f,i)=>{const m=f.slice(0,7);if(m!==prev&&i>5&&i<F.length-8&&+f.slice(5,7)%2===1){xl+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${meses[+f.slice(5,7)-1]} ${f.slice(2,4)}</text>`}prev=m});
+  const area=path(C)+`L${x(C.length-1)} ${H-B}L${L} ${H-B}Z`;
+  const last=C[C.length-1];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Precio de ${esc(a.simbolo)} en el último año con promedios de 50 y 200 días">
+    ${grid}${xl}
+    <path d="${area}" fill="var(--ink)" opacity=".06"/>
+    <path d="${path(S2)}" fill="none" stroke="var(--sma200)" stroke-width="1.6" stroke-dasharray="5 4"/>
+    <path d="${path(S5)}" fill="none" stroke="var(--sma50)" stroke-width="1.6"/>
+    <path d="${path(C)}" fill="none" stroke="var(--ink)" stroke-width="1.8"/>
+    <circle cx="${x(C.length-1)}" cy="${y(last)}" r="4" fill="var(--brass)"/>
+  </svg>`;
+}
+
+function motivos(list){return `<ul class="motivos">${(list||[]).map(m=>`<li><span class="peso ${m.peso>0?"var up":m.peso<0?"var down":""}">${sgn(m.peso)}</span><span>${esc(m.texto)}</span></li>`).join("")}</ul>`}
+
+function renderFicha(){
+  const a=activos.find(x=>x.simbolo===elegido&&!x.error)||activos.find(x=>!x.error);
+  const el=$("#ficha");if(!a){el.hidden=true;return}
+  elegido=a.simbolo;el.hidden=false;
+  const t=a.tecnico,f=a.fundamental,n=a.niveles||{};
+  const fechaAct=a.actualizado?new Date(a.actualizado).toLocaleString("es-PE",{dateStyle:"medium",timeStyle:"short"}):"";
+  let html=`<div class="ficha-top">
+    <div><h2>${esc(a.nombre)} <span class="mono" style="color:var(--muted);font-size:16px">${esc(a.simbolo)}</span></h2>
+      <div class="big">${fmt(t.precio)} <span style="font-size:15px;color:var(--muted)">${esc(a.moneda)}</span> ${varTxt(t.var_dia)}</div>
+      <div class="sub">Cierre del ${esc(a.fecha_precio)} · ${esc(a.tipo)}${a.bolsa?" · "+esc(a.bolsa):""} · analizado ${esc(fechaAct)}</div></div>
+    <div class="veredicto"><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span>
+      <span class="sub">Puntaje <b class="num" style="color:var(--ink)">${sgn(a.puntaje_total)}</b> · técnico ${sgn(t.puntaje)}${f?` · fundamental ${sgn(f.puntaje)}`:""}</span></div>
+  </div>`;
+  if(a.contexto)html+=`<div class="contexto"><h3 style="color:var(--brass)">Contexto</h3>${a.contexto.split(/\n+/).map(p=>`<p>${esc(p)}</p>`).join("")}${(a.fuentes||[]).length?`<p style="font-size:12px">Fuentes: ${a.fuentes.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.titulo)}</a>`).join(" · ")}</p>`:""}</div>`;
+  html+=`<section><h3>Precio último año</h3><div class="chart">${chart(a)}</div>
+    <div class="leyenda"><span><b style="background:var(--ink)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span></div></section>`;
+  html+=`<div class="grid2"><section><h3>Análisis técnico</h3>${motivos(t.motivos)}</section>
+    <section><h3>Indicadores</h3><dl class="kv">
+      <dt>Variación 1 mes / 3 meses</dt><dd>${sgn(t.var_1m)}% / ${sgn(t.var_3m)}%</dd>
+      <dt>Variación 1 año</dt><dd>${sgn(t.var_1a)}%</dd>
+      <dt>Promedio 50 / 200 días</dt><dd>${fmt(t.sma50)} / ${fmt(t.sma200)}</dd>
+      <dt>RSI (14)</dt><dd>${fmt(t.rsi,1)}</dd>
+      <dt>MACD / señal</dt><dd>${fmt(t.macd)} / ${fmt(t.macd_senal)}</dd>
+      <dt>Rango 52 semanas</dt><dd>${fmt(t.min52)} – ${fmt(t.max52)}</dd>
+      <dt>Volatilidad diaria (ATR)</dt><dd>${fmt(t.atr)} (${fmt(t.atr_pct,1)}%)</dd>
+      <dt>Volumen 20d vs 60d</dt><dd>${t.volumen_rel==null?"—":fmt(t.volumen_rel,2)+"×"}</dd>
+    </dl></section></div>`;
+  html+=`<section><h3>Niveles a vigilar</h3><div class="niveles">
+    ${(t.soportes||[]).map(v=>`<span class="chip"><small>Soporte</small>${fmt(v)}</span>`).join("")}
+    ${(t.resistencias||[]).map(v=>`<span class="chip"><small>Resistencia</small>${fmt(v)}</span>`).join("")}
+    <span class="chip"><small>Stop ref.</small>${fmt(n.stop_referencial)}</span>
+    <span class="chip"><small>Objetivo ref.</small>${fmt(n.objetivo_referencial)}</span></div></section>`;
+  if(f){
+    html+=`<div class="grid2"><section><h3>Análisis fundamental</h3>${motivos(f.motivos)}</section>
+      <section><h3>Ratios</h3><dl class="kv">
+        <dt>Capitalización</dt><dd>${fmtM(f.capitalizacion)}</dd>
+        <dt>PER</dt><dd>${f.per?fmt(f.per,1):"— (pérdidas)"}</dd>
+        <dt>PER futuro</dt><dd>${f.per_futuro?fmt(f.per_futuro,1):"—"}</dd>
+        <dt>Precio / ventas</dt><dd>${fmt(f.precio_ventas,1)}</dd>
+        <dt>Ingresos 12 meses</dt><dd>${fmtM(f.ingresos_ttm)} (${sgn(f.crec_ingresos_ttm)}%)</dd>
+        <dt>Utilidad 12 meses</dt><dd>${fmtM(f.utilidad_ttm)}</dd>
+        <dt>Caja / deuda</dt><dd>${fmtM(f.caja)} / ${fmtM(f.deuda)}</dd>
+      </dl></section></div>
+      <section><h3>Últimos trimestres reportados</h3><div class="tabla"><table><thead><tr><th>Trimestre</th><th>Ingresos</th><th>Margen bruto</th><th>Utilidad neta</th><th>BPA</th></tr></thead><tbody>
+      ${(f.trimestres||[]).slice().reverse().map(q=>`<tr><td>${esc(q.fecha)}</td><td>${fmtM(q.ingresos)}</td><td>${q.margen_bruto==null?"—":fmt(q.margen_bruto,1)+"%"}</td><td class="${q.utilidad_neta<0?"var down":""}">${fmtM(q.utilidad_neta)}</td><td>${q.eps==null?"—":fmt(q.eps,2)}</td></tr>`).join("")}
+      </tbody></table></div></section>`;
+  }else{
+    html+=`<p class="nota">Las materias primas no tienen estados financieros: el puntaje es solo técnico. El contexto macro (tasas, dólar, oferta y demanda) va en la nota de arriba.</p>`;
+  }
+  el.innerHTML=html;
+}
+
+function render(){
+  activos.sort((a,b)=>(a.orden??99)-(b.orden??99)||String(a.simbolo).localeCompare(b.simbolo));
+  const fechas=activos.map(a=>a.actualizado).filter(Boolean).sort();
+  $("#actualizado").textContent=fechas.length?"Actualizado "+new Date(fechas[fechas.length-1]).toLocaleString("es-PE",{dateStyle:"medium",timeStyle:"short"}):"Sin datos todavía";
+  renderLista();renderFicha();
+}
+
+(async()=>{
+  const CFG={url:"__SUPABASE_URL__",key:"__SUPABASE_KEY__"};
+  const H={apikey:CFG.key,Authorization:"Bearer "+CFG.key,"Content-Type":"application/json"};
+  async function cargar(){
+    try{
+      const r=await fetch(CFG.url+"/rest/v1/activos?select=datos,orden&order=orden.asc",{headers:H});
+      if(!r.ok)throw new Error(r.status);
+      activos=(await r.json()).map(x=>Object.assign({},x.datos,{orden:x.orden}));render();
+    }catch(e){$("#actualizado").textContent="No se pudieron leer los datos. Revisa tu conexión y recarga la página."}
+  }
+  await cargar();
+  $("#pedir").addEventListener("submit",async e=>{
+    e.preventDefault();
+    const tk=$("#tk").value.trim().toUpperCase();
+    if(!/^[A-Z0-9.=^-]{1,12}$/.test(tk)){$("#msg").textContent="Ese ticker no es válido. Usa letras, números, punto o =, por ejemplo AAPL o GC=F.";return}
+    try{
+      const r=await fetch(CFG.url+"/rest/v1/solicitudes",{method:"POST",headers:Object.assign({Prefer:"return=minimal"},H),body:JSON.stringify({simbolo:tk})});
+      if(r.status===409){$("#msg").textContent=tk+" ya estaba en cola.";return}
+      if(!r.ok)throw new Error(r.status);
+      $("#msg").textContent=`${tk} quedó en cola. Se analizará en la próxima actualización (días hábiles, 7:40 a. m. de Lima).`;$("#tk").value="";
+    }catch(err){$("#msg").textContent="No se pudo guardar el pedido. Inténtalo de nuevo en un momento."}
+  });
+})();
+</script>
+</body>
+</html>
