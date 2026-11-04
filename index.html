@@ -444,12 +444,12 @@ function renderPrueba(){
   const el=$("#prueba");
   if(!estudio){el.innerHTML=`<p class="aviso">La prueba todavía no está cargada.</p>`;return}
   const G=estudio.grupos,base=estudio.base["3m"].promedio;
-  const orden=["Sesgo comprador","Sesgo ligeramente positivo","Neutral / esperar","Sesgo ligeramente negativo","Sesgo vendedor"];
+  const orden=["Tendencia alcista","Tendencia ligeramente alcista","Tendencia lateral","Tendencia ligeramente bajista","Tendencia bajista"];
   const vals=orden.map(g=>G[g]&&G[g]["3m"]).filter(Boolean);const mx=Math.max(base,...vals.map(v=>v.promedio||0))*1.1;
   el.innerHTML=`<p class="aviso">Rendimiento promedio a 3 meses después de cada señal técnica, en ${estudio.activos.length} activos durante ${estudio.anios} años (${fmt(estudio.base["3m"].n,0)} casos).</p>
-  <div class="barras">${orden.map(g=>{const v=G[g]&&G[g]["3m"];if(!v||!v.n)return"";return `<div class="b"><span>${esc(g.replace("Sesgo ",""))}</span><span class="pista"><i style="width:${Math.max(2,v.promedio/mx*100)}%"></i></span><span class="num">${sgn(v.promedio)}%</span></div>`}).join("")}
+  <div class="barras">${orden.map(g=>{const v=G[g]&&G[g]["3m"];if(!v||!v.n)return"";return `<div class="b"><span>${esc(g.replace("Tendencia ",""))}</span><span class="pista"><i style="width:${Math.max(2,v.promedio/mx*100)}%"></i></span><span class="num">${sgn(v.promedio)}%</span></div>`}).join("")}
   <div class="b"><span>Cualquier día (base)</span><span class="pista"><i class="base" style="width:${base/mx*100}%"></i></span><span class="num">${sgn(base)}%</span></div></div>
-  <p class="aviso" style="margin-top:6px"><b style="color:var(--amber)">Conclusión:</b> el puntaje técnico <b>no anticipó</b> subidas. Después de un "sesgo vendedor" el precio subió más que el promedio, y después de un "sesgo comprador", menos. Úsalo para leer la tendencia actual, no como señal de compra o venta. La muestra solo incluye empresas que siguen existiendo, lo que infla los resultados.</p>`;
+  <p class="aviso" style="margin-top:6px"><b style="color:var(--amber)">Conclusión:</b> el puntaje técnico <b>no anticipó</b> subidas. Después de una "tendencia bajista" el precio subió más que el promedio, y después de una "tendencia alcista", menos. Describe la tendencia actual; no es una señal de compra o venta. La muestra solo incluye empresas que siguen existiendo, lo que infla los resultados.</p>`;
 }
 
 function render(){

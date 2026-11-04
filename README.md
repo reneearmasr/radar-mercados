@@ -19,13 +19,13 @@ Incluye: promedios móviles, RSI, MACD, bandas de Bollinger, Fibonacci, volumen,
 
 Cada activo recibe un puntaje técnico y uno fundamental de −100 a +100; el total es su promedio (solo técnico en materias primas):
 
-| Puntaje | Sesgo |
+| Puntaje | Tendencia |
 |---|---|
-| 35 o más | Sesgo comprador |
-| 10 a 34 | Ligeramente positivo |
-| −9 a 9 | Neutral / esperar |
-| −34 a −10 | Ligeramente negativo |
-| −35 o menos | Sesgo vendedor |
+| 35 o más | Tendencia alcista |
+| 10 a 34 | Ligeramente alcista |
+| −9 a 9 | Lateral |
+| −34 a −10 | Ligeramente bajista |
+| −35 o menos | Tendencia bajista |
 
 ## Precio objetivo a 12 meses
 
@@ -35,6 +35,6 @@ Cada activo recibe un puntaje técnico y uno fundamental de −100 a +100; el to
 
 ## ¿Funciona el puntaje?
 
-`motor/backtest.py` probó el puntaje técnico en 20 activos durante 10 años. No anticipó subidas: después de un "sesgo vendedor" el rendimiento a 3 meses fue mayor que el promedio, y después de un "sesgo comprador", menor. Sirve para describir la tendencia, no como señal de compra o venta.
+`motor/backtest.py` probó el puntaje técnico en 20 activos durante 10 años. No anticipó subidas: después de una "tendencia bajista" el rendimiento a 3 meses fue mayor que el promedio, y después de una "tendencia alcista", menor. Sirve para describir la tendencia, no como señal de compra o venta.
 
 Es información para análisis propio, no una recomendación de inversión.

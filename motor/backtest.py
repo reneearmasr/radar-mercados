@@ -3,7 +3,7 @@
 
 Para cada activo y cada día de los últimos 10 años calcula el puntaje técnico con los datos
 disponibles ese día y mira qué pasó con el precio 1 y 3 meses después. Agrupa los resultados
-por sesgo y los compara con el rendimiento promedio de cualquier día (la base).
+por tendencia y los compara con el rendimiento promedio de cualquier día (la base).
 
 Uso: python3 motor/backtest.py > data/backtest.json
 El puntaje fundamental no se prueba: no hay estados financieros diarios para el pasado.
@@ -17,8 +17,8 @@ import analizar as A  # noqa: E402
 UNIVERSO = ["GC=F", "OUST", "TMDX", "VSH", "SPY", "QQQ", "IWM", "AAPL", "MSFT", "NVDA", "AMZN", "TSLA",
             "JPM", "XOM", "KO", "JNJ", "CAT", "GLD", "SI=F", "CL=F"]
 HORIZONTES = {"1m": 21, "3m": 63}
-GRUPOS = ["Sesgo comprador", "Sesgo ligeramente positivo", "Neutral / esperar",
-          "Sesgo ligeramente negativo", "Sesgo vendedor"]
+GRUPOS = ["Tendencia alcista", "Tendencia ligeramente alcista", "Tendencia lateral",
+          "Tendencia ligeramente bajista", "Tendencia bajista"]
 
 
 def grupo(p):

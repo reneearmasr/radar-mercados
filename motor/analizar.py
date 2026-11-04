@@ -353,11 +353,11 @@ def proyeccion(t, f):
 
 def sesgo(pt, pf):
     total = pt if pf is None else round(pt * 0.5 + pf * 0.5)
-    if total >= 35: e = "Sesgo comprador"
-    elif total >= 10: e = "Sesgo ligeramente positivo"
-    elif total > -10: e = "Neutral / esperar"
-    elif total > -35: e = "Sesgo ligeramente negativo"
-    else: e = "Sesgo vendedor"
+    if total >= 35: e = "Tendencia alcista"
+    elif total >= 10: e = "Tendencia ligeramente alcista"
+    elif total > -10: e = "Tendencia lateral"
+    elif total > -35: e = "Tendencia ligeramente bajista"
+    else: e = "Tendencia bajista"
     return total, e
 
 
