@@ -83,6 +83,18 @@ th:first-child,td:first-child{text-align:left}
 .contexto a{color:var(--ink)}
 .nota{font-size:12px;color:var(--muted);max-width:80ch}
 .niveles{display:flex;flex-wrap:wrap;gap:8px}
+.objetivos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.obj{border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:4px;min-width:0}
+.obj.principal{border-color:var(--brass);background:var(--brass-soft)}
+.obj .etq{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.obj .val{font-family:var(--f-mono);font-size:24px;font-variant-numeric:tabular-nums}
+.obj .det{font-size:12px;color:var(--muted)}
+.rango{position:relative;height:28px;margin-top:6px}
+.rango .barra{position:absolute;top:12px;height:4px;background:var(--brass);border-radius:2px;opacity:.5}
+.rango .linea{position:absolute;top:0;left:0;right:0;height:28px;border-bottom:1px solid var(--line)}
+.rango .mk{position:absolute;top:6px;width:2px;height:16px;transform:translateX(-50%)}
+.rango .mk.act{background:var(--ink)} .rango .mk.obj2{background:var(--brass)}
+.objtxt{font-size:12px;color:var(--muted)}
 .chip{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-family:var(--f-mono);font-size:13px}
 .chip small{font-family:var(--f-body);color:var(--muted);margin-right:6px}
 
@@ -134,6 +146,38 @@ const clase=s=>s>=10?"up":s<=-10?"down":"flat";
 const varTxt=v=>v==null?"":`<span class="var ${v>0?"up":v<0?"down":""} num">${v>0?"+":""}${fmt(v,2)}%</span>`;
 const pos=s=>((Math.max(-100,Math.min(100,s))+100)/2)+"%";
 
+function objPrincipal(a){
+  const an=a.objetivo_analistas,pr=a.proyeccion,p=a.tecnico.precio;
+  if(an&&an.promedio)return{v:an.promedio,src:a.tipo==="materia prima"?"bancos":"analistas"};
+  if(pr&&pr.central)return{v:pr.central,src:"proyección"};
+  return null;
+}
+function objLinea(a){const o=objPrincipal(a);if(!o)return"";const pc=(o.v/a.tecnico.precio-1)*100;
+  return `<div class="objtxt">Objetivo 12 m (${o.src}): <span class="num" style="color:var(--ink)">${fmt(o.v)}</span> <span class="var ${pc>0?"up":"down"} num">${pc>0?"+":""}${fmt(pc,0)}%</span></div>`}
+function bloqueObjetivos(a){
+  const p=a.tecnico.precio,an=a.objetivo_analistas,pr=a.proyeccion||{};
+  const pct=v=>{const x=(v/p-1)*100;return `<span class="var ${x>0?"up":"down"} num">${x>0?"+":""}${fmt(x,1)}%</span>`};
+  let h=`<section><h3>Precio objetivo a 12 meses</h3><div class="objetivos">`;
+  if(an&&an.promedio){
+    const lo=Math.min(an.bajo??an.promedio,p,pr.central??p),hi=Math.max(an.alto??an.promedio,p,pr.central??p),sp=(hi-lo)||1,X=v=>((v-lo)/sp*100).toFixed(1)+"%";
+    h+=`<div class="obj principal"><span class="etq">${a.tipo==="materia prima"?"Pronóstico de bancos":"Consenso de analistas"}</span>
+      <span class="val">${fmt(an.promedio)} ${pct(an.promedio)}</span>
+      <span class="det">Rango ${fmt(an.bajo)} – ${fmt(an.alto)}${an.analistas?` · ${an.analistas} ${a.tipo==="materia prima"?"bancos":"analistas"}`:""}${an.consenso?` · consenso: ${esc(an.consenso)}`:""}</span>
+      <div class="rango" aria-hidden="true"><div class="linea"></div>${an.bajo!=null&&an.alto!=null?`<div class="barra" style="left:${X(an.bajo)};width:calc(${X(an.alto)} - ${X(an.bajo)})"></div>`:""}<div class="mk act" style="left:${X(p)}" title="Precio actual"></div><div class="mk obj2" style="left:${X(an.promedio)}" title="Objetivo"></div></div>
+      <span class="det">${an.fecha?"Dato del "+esc(an.fecha)+". ":""}${an.nota?esc(an.nota)+" ":""}${an.url?`<a href="${esc(an.url)}" target="_blank" rel="noopener" style="color:var(--ink)">${esc(an.fuente||"Fuente")}</a>`:""}</span></div>`;
+  }else{
+    h+=`<div class="obj"><span class="etq">Analistas</span><span class="det">No se encontró un objetivo publicado; se usa la proyección del Radar.</span></div>`;
+  }
+  if(pr.central){
+    h+=`<div class="obj${an&&an.promedio?"":" principal"}"><span class="etq">Proyección del Radar</span>
+      <span class="val">${fmt(pr.central)} ${pct(pr.central)}</span>
+      <span class="det">${pr.valoracion!=null?`Por valoración ${fmt(pr.valoracion)} (${esc(pr.valoracion_metodo)}) · `:""}${pr.reversion!=null?`Regreso al promedio de 200 días ${fmt(pr.reversion)} · `:""}Por tendencia ${fmt(pr.tendencia)} (ritmo de 3 meses: ${sgn(pr.tendencia_anual_pct)}% anual)</span>
+      <span class="det">Modelo propio${pr.valoracion!=null?": 70 % valoración y 30 % tendencia":": 50 % tendencia y 50 % promedio de 200 días"}. Es una estimación, no un pronóstico.</span></div>`;
+  }
+  if(pr.resistencia)h+=`<div class="obj"><span class="etq">Próxima resistencia técnica</span><span class="val">${fmt(pr.resistencia)} ${pct(pr.resistencia)}</span><span class="det">Máximo reciente que el precio tendría que superar.</span></div>`;
+  return h+`</div></section>`;
+}
+
 function renderLista(){
   $("#vacio").hidden=activos.length>0;
   $("#lista").innerHTML=activos.map(a=>{
@@ -144,6 +188,7 @@ function renderLista(){
       <div class="nom">${esc(a.nombre)}</div>
       <div class="top"><span class="precio">${fmt(t.precio)}</span><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span></div>
       <div class="gauge" title="Puntaje ${a.puntaje_total}"><i style="left:${pos(a.puntaje_total)}"></i></div>
+      ${objLinea(a)}
     </button>`}).join("");
   document.querySelectorAll(".fila[data-s]").forEach(b=>b.onclick=()=>{elegido=b.dataset.s;try{localStorage.setItem("radar-elegido",elegido)}catch(e){};renderLista();renderFicha();$("#ficha").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"})});
 }
@@ -188,6 +233,7 @@ function renderFicha(){
       <span class="sub">Puntaje <b class="num" style="color:var(--ink)">${sgn(a.puntaje_total)}</b> · técnico ${sgn(t.puntaje)}${f?` · fundamental ${sgn(f.puntaje)}`:""}</span></div>
   </div>`;
   if(a.contexto)html+=`<div class="contexto"><h3 style="color:var(--brass)">Contexto</h3>${a.contexto.split(/\n+/).map(p=>`<p>${esc(p)}</p>`).join("")}${(a.fuentes||[]).length?`<p style="font-size:12px">Fuentes: ${a.fuentes.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.titulo)}</a>`).join(" · ")}</p>`:""}</div>`;
+  html+=bloqueObjetivos(a);
   html+=`<section><h3>Precio último año</h3><div class="chart">${chart(a)}</div>
     <div class="leyenda"><span><b style="background:var(--ink)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span></div></section>`;
   html+=`<div class="grid2"><section><h3>Análisis técnico</h3>${motivos(t.motivos)}</section>

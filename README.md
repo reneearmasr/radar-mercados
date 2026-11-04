@@ -22,4 +22,10 @@ Cada activo recibe un puntaje técnico y uno fundamental de −100 a +100; el to
 | −34 a −10 | Ligeramente negativo |
 | −35 o menos | Sesgo vendedor |
 
+## Precio objetivo a 12 meses
+
+- **Analistas / bancos:** consenso publicado, buscado en la web en cada actualización (con fuente y fecha).
+- **Proyección del Radar:** modelo propio. Acciones: 70 % valoración (ventas esperadas × precio/ventas histórico de 2 años, y ganancia esperada × PER futuro histórico) y 30 % tendencia de 3 meses (a la mitad, máximo ±30 %). Materias primas: 50 % tendencia y 50 % regreso al promedio de 200 días.
+- **Resistencia técnica:** próximo máximo reciente por encima del precio.
+
 Es información para análisis propio, no una recomendación de inversión.

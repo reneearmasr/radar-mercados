@@ -207,7 +207,72 @@ def fundamentales(sym):
         suma(-15 if ps > 10 else (0 if ps > 3 else 10), f"Precio/ventas {ps:.1f}")
     f["puntaje"] = max(-100, min(100, puntos))
     f["motivos"] = motivos
+    corte = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 730 * 86400))
+    f["_hist_ps"] = [v for d, v in datos.get("trailingPsRatio", []) if d >= corte]
+    f["_hist_fpe"] = [v for d, v in datos.get("trailingForwardPeRatio", []) if d >= corte]
     return f
+
+
+def mediana(xs):
+    xs = sorted(xs)
+    if not xs:
+        return None
+    m = len(xs) // 2
+    return xs[m] if len(xs) % 2 else (xs[m - 1] + xs[m]) / 2
+
+
+def acotar(v, p, lo, hi):
+    return None if v is None else max(p * lo, min(p * hi, v))
+
+
+def proyeccion(t, f):
+    """Precio proyectado a 12 meses: por valoración (múltiplos históricos) y por tendencia del último año."""
+    p = t["precio"]
+    c = t["cierres"]
+    # Tendencia: pendiente de los últimos 3 meses (regresión del logaritmo), anualizada,
+    # reducida a la mitad (las tendencias se agotan) y limitada a ±30 %
+    c6 = c[-63:]
+    n = len(c6)
+    xs = list(range(n)); ys = [math.log(v) for v in c6]
+    mx, my = sum(xs) / n, sum(ys) / n
+    b = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sum((x - mx) ** 2 for x in xs)
+    anual = math.exp(b * 252) - 1
+    tend = p * (1 + max(-0.3, min(0.3, anual / 2)))
+    out = {"tendencia": round(tend, 2), "tendencia_anual_pct": round(anual * 100, 1)}
+
+    val, partes = [], []
+    if f and f.get("capitalizacion") and f.get("ingresos_ttm"):
+        acciones = f["capitalizacion"] / p
+        g = (f.get("crec_ingresos_ttm") if f.get("crec_ingresos_ttm") is not None else f.get("crec_ingresos_yoy") or 0) / 100
+        g = max(-0.2, min(0.4, g))
+        ventas = f["ingresos_ttm"] * (1 + g)
+        hist = f["_hist_ps"][:-1]
+        ps_act = f.get("precio_ventas") or f["capitalizacion"] / f["ingresos_ttm"]
+        ps_obj = mediana(hist) if len(hist) >= 2 else ps_act
+        ps_obj = max(ps_act * 0.75, min(ps_act * 1.33, ps_obj))
+        v = acotar(ps_obj * ventas / acciones, p, 0.3, 3)
+        val.append(v)
+        partes.append(f"ventas a 12 meses (+{g*100:.0f}%) × precio/ventas histórico {ps_obj:.1f}")
+        fpe = f.get("per_futuro")
+        hfpe = [x for x in f["_hist_fpe"][:-1] if 0 < x < 100]
+        if fpe and 0 < fpe < 100 and len(hfpe) >= 2:
+            pe_obj = max(fpe * 0.75, min(fpe * 1.33, mediana(hfpe)))
+            v2 = acotar(pe_obj * p / fpe, p, 0.3, 3)
+            val.append(v2)
+            partes.append(f"ganancia esperada × PER futuro histórico {pe_obj:.0f}")
+    if val:
+        out["valoracion"] = round(sum(val) / len(val), 2)
+        out["valoracion_metodo"] = "; ".join(partes)
+        central = 0.7 * out["valoracion"] + 0.3 * tend
+    else:
+        # Sin estados financieros (materias primas): mitad tendencia, mitad regreso al promedio de 200 días
+        media = t.get("sma200") or p
+        out["reversion"] = round(media, 2)
+        central = 0.5 * tend + 0.5 * media
+    out["central"] = round(central, 2)
+    out["potencial_pct"] = round((central / p - 1) * 100, 1)
+    out["resistencia"] = next((r for r in t["resistencias"] if r > p), None)
+    return out
 
 
 def sesgo(pt, pf):
@@ -226,13 +291,16 @@ def analizar(sym):
     f = None if sym in MATERIAS else fundamentales(sym)
     total, etiqueta = sesgo(t["puntaje"], f and f["puntaje"])
     p = t["precio"]
+    proy = proyeccion(t, f)
+    if f:
+        f.pop("_hist_ps", None); f.pop("_hist_fpe", None)
     return {
         "simbolo": sym, "nombre": NOMBRES.get(sym) or meta.get("longName") or meta.get("shortName") or sym,
         "tipo": "materia prima" if sym in MATERIAS else "acción",
         "moneda": meta.get("currency", "USD"), "bolsa": meta.get("fullExchangeName"),
         "actualizado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fecha_precio": t["fechas"][-1],
-        "tecnico": t, "fundamental": f, "puntaje_total": total, "sesgo": etiqueta,
+        "tecnico": t, "fundamental": f, "puntaje_total": total, "sesgo": etiqueta, "proyeccion": proy,
         "niveles": {"stop_referencial": round(p - 2 * t["atr"], 4), "objetivo_referencial": round(p + 3 * t["atr"], 4)},
     }
 
