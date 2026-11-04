@@ -59,72 +59,148 @@ def pct(a, b):
     return None if (a is None or not b) else (a / b - 1) * 100
 
 
-def tecnico(filas):
+def rsi_serie(xs, n=14):
+    out = [None] * len(xs)
+    if len(xs) <= n:
+        return out
+    g = p = 0.0
+    for i in range(1, n + 1):
+        d = xs[i] - xs[i - 1]
+        g += max(d, 0); p += max(-d, 0)
+    g /= n; p /= n
+    out[n] = 100.0 if p == 0 else 100 - 100 / (1 + g / p)
+    for i in range(n + 1, len(xs)):
+        d = xs[i] - xs[i - 1]
+        g = (g * (n - 1) + max(d, 0)) / n
+        p = (p * (n - 1) + max(-d, 0)) / n
+        out[i] = 100.0 if p == 0 else 100 - 100 / (1 + g / p)
+    return out
+
+
+def sma_serie(xs, n):
+    out, s = [None] * len(xs), 0.0
+    for i, x in enumerate(xs):
+        s += x
+        if i >= n:
+            s -= xs[i - n]
+        if i >= n - 1:
+            out[i] = s / n
+    return out
+
+
+def senales(c, h):
+    """Series completas de indicadores para poder evaluar el puntaje en cualquier día."""
+    e12, e26 = ema_serie(c, 12), ema_serie(c, 26)
+    macd = [a - b for a, b in zip(e12, e26)]
+    return {"s50": sma_serie(c, 50), "s200": sma_serie(c, 200), "macd": macd, "senal": ema_serie(macd, 9),
+            "rsi": rsi_serie(c), "h": h}
+
+
+def evaluar(c, S, i, textos=True):
+    """Puntaje técnico del día i usando solo datos hasta ese día. Devuelve (puntos, motivos)."""
+    p, s50, s200 = c[i], S["s50"][i], S["s200"][i]
+    puntos, motivos = 0, []
+    def suma(n, txt):
+        nonlocal puntos
+        puntos += n
+        if textos:
+            motivos.append({"peso": n, "texto": txt()})
+    if s200:
+        suma(20 if p > s200 else -20, lambda: f"Precio {'sobre' if p > s200 else 'bajo'} el promedio de 200 días (tendencia de largo plazo {'alcista' if p > s200 else 'bajista'})")
+    if s50:
+        suma(15 if p > s50 else -15, lambda: f"Precio {'sobre' if p > s50 else 'bajo'} el promedio de 50 días")
+    if s50 and s200:
+        suma(15 if s50 > s200 else -15, lambda: "Promedio de 50 días " + ("sobre el de 200 (cruce dorado)" if s50 > s200 else "bajo el de 200 (cruce de la muerte)"))
+    if S["macd"][i] > S["senal"][i]:
+        suma(15, lambda: "MACD sobre su línea de señal (impulso al alza)")
+    else:
+        suma(-15, lambda: "MACD bajo su línea de señal (impulso a la baja)")
+    r = S["rsi"][i]
+    if r is not None:
+        if r >= 70: suma(-15, lambda: f"RSI {r:.0f}: sobrecompra, riesgo de corrección")
+        elif r <= 30: suma(15, lambda: f"RSI {r:.0f}: sobreventa, posible rebote")
+        elif r >= 50: suma(5, lambda: f"RSI {r:.0f}: fuerza moderada")
+        else: suma(-5, lambda: f"RSI {r:.0f}: debilidad moderada")
+    if i >= 63:
+        m3 = pct(p, c[i - 63])
+        suma(10 if m3 > 0 else -10, lambda: f"Variación de 3 meses: {m3:+.1f}%")
+    hi52 = max(S["h"][max(0, i - 251):i + 1])
+    dist = pct(p, hi52)
+    if dist is not None and dist < -40:
+        suma(-5, lambda: f"A {abs(dist):.0f}% de su máximo de 52 semanas")
+    return max(-100, min(100, puntos)), motivos
+
+
+def tecnico(filas, bench=None):
     c = [f[1] for f in filas]
     h = [f[2] or f[1] for f in filas]
     l = [f[3] or f[1] for f in filas]
     v = [f[4] or 0 for f in filas]
+    fechas_all = [datetime.fromtimestamp(f[0], timezone.utc).strftime("%Y-%m-%d") for f in filas]
     p = c[-1]
-    s20, s50, s200 = sma(c, 20), sma(c, 50), sma(c, 200)
-    e12, e26 = ema_serie(c, 12), ema_serie(c, 26)
-    macd = [a - b for a, b in zip(e12, e26)]
-    senal = ema_serie(macd, 9)
-    r = rsi(c)
+    S = senales(c, h)
+    s20 = sma(c, 20)
+    r = S["rsi"][-1]
     hi52, lo52 = max(h[-252:]), min(l[-252:])
-    # soportes/resistencias: minimos y maximos de los ultimos 20 y 60 dias
     sop = sorted({round(min(l[-20:]), 2), round(min(l[-60:]), 2)}, reverse=True)
     res = sorted({round(max(h[-20:]), 2), round(max(h[-60:]), 2)})
     tr = [max(h[i] - l[i], abs(h[i] - c[i - 1]), abs(l[i] - c[i - 1])) for i in range(len(c) - 14, len(c))]
     atr = sum(tr) / 14
     vol20 = sum(v[-20:]) / 20 if any(v[-20:]) else None
     vol60 = sum(v[-60:]) / 60 if any(v[-60:]) else None
-
-    puntos, motivos = 0, []
-    def suma(n, txt):
-        nonlocal puntos
-        puntos += n
-        motivos.append({"peso": n, "texto": txt})
-
-    if s200:
-        suma(20 if p > s200 else -20, f"Precio {'sobre' if p > s200 else 'bajo'} el promedio de 200 días (tendencia de largo plazo {'alcista' if p > s200 else 'bajista'})")
-    if s50:
-        suma(15 if p > s50 else -15, f"Precio {'sobre' if p > s50 else 'bajo'} el promedio de 50 días")
-    if s50 and s200:
-        suma(15 if s50 > s200 else -15, "Promedio de 50 días " + ("sobre el de 200 (cruce dorado)" if s50 > s200 else "bajo el de 200 (cruce de la muerte)"))
-    if macd[-1] > senal[-1]:
-        suma(15, "MACD sobre su línea de señal (impulso al alza)")
-    else:
-        suma(-15, "MACD bajo su línea de señal (impulso a la baja)")
-    if r is not None:
-        if r >= 70: suma(-15, f"RSI {r:.0f}: sobrecompra, riesgo de corrección")
-        elif r <= 30: suma(15, f"RSI {r:.0f}: sobreventa, posible rebote")
-        elif r >= 50: suma(5, f"RSI {r:.0f}: fuerza moderada")
-        else: suma(-5, f"RSI {r:.0f}: debilidad moderada")
+    puntos, motivos = evaluar(c, S, len(c) - 1)
     m1 = pct(p, c[-22]) if len(c) > 22 else None
     m3 = pct(p, c[-64]) if len(c) > 64 else None
-    if m3 is not None:
-        suma(10 if m3 > 0 else -10, f"Variación de 3 meses: {m3:+.1f}%")
-    dist_hi = pct(p, hi52)
-    if dist_hi is not None and dist_hi < -40:
-        suma(-5, f"A {abs(dist_hi):.0f}% de su máximo de 52 semanas")
 
-    serie = [[datetime.fromtimestamp(f[0], timezone.utc).strftime("%Y-%m-%d"), round(f[1], 4)] for f in filas[-252:]]
-    s50s = [None if i < 49 else sum(c[i - 49:i + 1]) / 50 for i in range(len(c))][-252:]
-    s200s = [None if i < 199 else sum(c[i - 199:i + 1]) / 200 for i in range(len(c))][-252:]
+    # Bandas de Bollinger (20 días, 2 desviaciones)
+    bb_sup, bb_inf = [], []
+    for i in range(len(c)):
+        if i < 19:
+            bb_sup.append(None); bb_inf.append(None); continue
+        w = c[i - 19:i + 1]; m = sum(w) / 20
+        sd = (sum((x - m) ** 2 for x in w) / 20) ** 0.5
+        bb_sup.append(m + 2 * sd); bb_inf.append(m - 2 * sd)
+    # Fibonacci sobre el rango de 52 semanas
+    fib = {k: round(hi52 - (hi52 - lo52) * k, 4) for k in (0.236, 0.382, 0.5, 0.618, 0.786)}
+    # Historial del puntaje técnico (último año)
+    n0 = max(0, len(c) - 252)
+    hist = [evaluar(c, S, i, textos=False)[0] for i in range(n0, len(c))]
+    # Fuerza relativa frente al S&P 500
+    rel = None
+    if bench:
+        import bisect
+        bf = [x[0] for x in bench]
+        def bval(f):
+            k = bisect.bisect_right(bf, f) - 1
+            return bench[k][1] if k >= 0 else None
+        def rend(dias):
+            if len(c) <= dias:
+                return None
+            b0, b1 = bval(fechas_all[-1 - dias]), bval(fechas_all[-1])
+            if b0 and b1:
+                return round(pct(c[-1], c[-1 - dias]) - pct(b1, b0), 1)
+            return None
+        rel = {"1m": rend(21), "3m": rend(63), "1a": rend(252)}
+
+    R = lambda xs: [None if x is None else round(x, 4) for x in xs[-252:]]
     return {
         "precio": round(p, 4), "cierre_previo": round(c[-2], 4),
         "var_dia": round(pct(p, c[-2]), 2), "var_1m": None if m1 is None else round(m1, 1),
         "var_3m": None if m3 is None else round(m3, 1),
         "var_1a": round(pct(p, c[-253]), 1) if len(c) > 253 else None,
-        "sma20": s20 and round(s20, 4), "sma50": s50 and round(s50, 4), "sma200": s200 and round(s200, 4),
-        "rsi": r and round(r, 1), "macd": round(macd[-1], 4), "macd_senal": round(senal[-1], 4),
+        "sma20": s20 and round(s20, 4), "sma50": S["s50"][-1] and round(S["s50"][-1], 4),
+        "sma200": S["s200"][-1] and round(S["s200"][-1], 4),
+        "rsi": r and round(r, 1), "macd": round(S["macd"][-1], 4), "macd_senal": round(S["senal"][-1], 4),
         "max52": round(hi52, 4), "min52": round(lo52, 4), "atr": round(atr, 4),
         "atr_pct": round(atr / p * 100, 2), "soportes": sop, "resistencias": res,
         "volumen_rel": round(vol20 / vol60, 2) if vol20 and vol60 else None,
-        "puntaje": max(-100, min(100, puntos)), "motivos": motivos,
-        "fechas": [s[0] for s in serie], "cierres": [s[1] for s in serie],
-        "sma50s": [None if x is None else round(x, 4) for x in s50s],
-        "sma200s": [None if x is None else round(x, 4) for x in s200s],
+        "bollinger": {"sup": round(bb_sup[-1], 4), "inf": round(bb_inf[-1], 4)},
+        "fibonacci": fib, "vs_sp500": rel,
+        "puntaje": puntos, "motivos": motivos,
+        "fechas": fechas_all[-252:], "cierres": R(c),
+        "sma50s": R(S["s50"]), "sma200s": R(S["s200"]),
+        "bb_sup": R(bb_sup), "bb_inf": R(bb_inf), "volumenes": [int(x) for x in v[-252:]],
+        "puntajes_hist": hist,
     }
 
 
@@ -285,9 +361,23 @@ def sesgo(pt, pf):
     return total, e
 
 
+_CACHE = {}
+
+
+def referencia(sym):
+    """Serie de referencia (S&P 500 o tipo de cambio), descargada una sola vez."""
+    if sym not in _CACHE:
+        try:
+            _, f = precios(sym)
+            _CACHE[sym] = [(datetime.fromtimestamp(x[0], timezone.utc).strftime("%Y-%m-%d"), x[1]) for x in f]
+        except Exception:  # noqa
+            _CACHE[sym] = None
+    return _CACHE[sym]
+
+
 def analizar(sym):
     meta, filas = precios(sym)
-    t = tecnico(filas)
+    t = tecnico(filas, referencia("^GSPC"))
     f = None if sym in MATERIAS else fundamentales(sym)
     total, etiqueta = sesgo(t["puntaje"], f and f["puntaje"])
     p = t["precio"]
@@ -301,6 +391,7 @@ def analizar(sym):
         "actualizado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fecha_precio": t["fechas"][-1],
         "tecnico": t, "fundamental": f, "puntaje_total": total, "sesgo": etiqueta, "proyeccion": proy,
+        "tipo_cambio_pen": (referencia("PEN=X") or [[None, None]])[-1][1] if meta.get("currency", "USD") == "USD" else None,
         "niveles": {"stop_referencial": round(p - 2 * t["atr"], 4), "objetivo_referencial": round(p + 3 * t["atr"], 4)},
     }
 

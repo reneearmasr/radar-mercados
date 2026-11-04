@@ -1,18 +1,5 @@
--- Radar de Mercados: tablas y seguridad (RLS)
-create table if not exists public.activos (
-  id          text primary key,            -- símbolo con "=" cambiado por "_" (GC=F -> GC_F)
-  simbolo     text not null,
-  orden       int  not null default 99,
-  datos       jsonb not null,              -- resultado completo del motor + contexto y fuentes
-  actualizado timestamptz not null default now()
-);
-create table if not exists public.solicitudes (
-  simbolo text primary key check (simbolo ~ '^[A-Z0-9.=^-]{1,12}$'),
-  pedido  timestamptz not null default now()
-);
-alter table public.activos enable row level security;
-alter table public.solicitudes enable row level security;
--- Cualquiera puede leer el tablero; solo el dueño (por SQL / clave de servicio) escribe.
-create policy "lectura publica de activos" on public.activos for select to anon, authenticated using (true);
--- Los visitantes solo pueden dejar un ticker en cola; no pueden leer ni borrar la cola.
-create policy "pedir un ticker" on public.solicitudes for insert to anon, authenticated with check (true);
+-- El esquema vigente se aplicó con migraciones desde Claude (proyecto radar-mercados).
+-- Resumen: tablas activos, historial, cartera, solicitudes, estudios, alertas_enviadas y config_privada,
+-- con seguridad por filas: solo el correo del dueño (public.es_dueno()) puede leer o escribir.
+-- public.cargar_activos() descarga data/activos.enc desde GitHub, lo descifra y actualiza activos e historial.
+-- public.cargar_estudio() carga data/backtest.json en la tabla estudios.

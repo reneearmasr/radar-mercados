@@ -116,6 +116,45 @@ tbody tr:hover{background:var(--cyan-dim)}
 .rango .mk.act{background:var(--cyan);box-shadow:0 0 8px var(--cyan)} .rango .mk.obj2{background:var(--amber);box-shadow:0 0 8px var(--amber)}
 .objtxt{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
 
+
+/* Login */
+.login{max-width:420px;margin:8vh auto 0;background:var(--panel);border:1px solid var(--line-strong);border-radius:4px;padding:24px;display:grid;gap:12px;clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+.login label{font-family:var(--f-mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan)}
+.campo{font:inherit;font-family:var(--f-mono);padding:10px 12px;border:1px solid var(--line-strong);border-radius:2px;background:rgba(6,10,18,.7);color:var(--ink);width:100%}
+.campo:focus-visible,.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.btn{font-family:var(--f-display);font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;border-radius:2px;border:1px solid var(--cyan);background:var(--cyan-dim);color:var(--cyan);cursor:pointer;font-size:13px}
+.btn:hover{background:var(--cyan);color:var(--bg)}
+.btn.sec{border-color:var(--line-strong);background:transparent;color:var(--muted)}
+.btn.sec:hover{color:var(--ink);background:transparent;border-color:var(--ink)}
+.btn.peligro{border-color:var(--down);color:var(--down);background:var(--down-soft)}
+.btn.chico{padding:4px 8px;font-size:11px}
+.fila-btn{display:flex;flex-wrap:wrap;gap:8px}
+.aviso{font-size:13px;color:var(--muted)}
+.aviso.err{color:var(--down)}
+/* Paneles generales */
+.panel{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line-strong);border-radius:4px;padding:18px;display:grid;gap:14px;min-width:0}
+.dos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+.dos>*{min-width:0}
+.resumen{display:flex;flex-wrap:wrap;gap:10px 28px}
+.resumen div{display:grid;gap:2px}
+.resumen small{font-family:var(--f-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.resumen b{font-family:var(--f-mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}
+form.alta{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;align-items:end}
+form.alta label{display:grid;gap:4px;font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+form.alta .campo{padding:8px 10px;font-size:13px}
+.cal{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.cal li{display:grid;grid-template-columns:86px 1fr;gap:10px;align-items:baseline;font-size:13px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
+.cal .f{font-family:var(--f-mono);color:var(--amber)}
+.cal .f.pasado{color:var(--muted)}
+.barras{display:grid;gap:8px}
+.barras .b{display:grid;grid-template-columns:150px 1fr 64px;gap:10px;align-items:center;font-size:12.5px}
+.barras .pista{position:relative;height:10px;background:rgba(120,170,255,.08);border-radius:2px}
+.barras .pista i{position:absolute;left:0;top:0;bottom:0;border-radius:2px;background:var(--cyan);box-shadow:0 0 10px rgba(62,230,255,.4)}
+.barras .pista i.base{background:var(--muted);box-shadow:none}
+.barras .num{text-align:right}
+@media (max-width:480px){.barras .b{grid-template-columns:110px 1fr 56px}}
+.pen{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+
 /* Pedir */
 form.pedir{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px dashed var(--line-strong);border-radius:4px;padding:16px}
 form.pedir label{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);flex-basis:100%}
@@ -138,24 +177,58 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
 <div class="wrap">
   <header>
     <h1>Radar de <span>Mercados</span></h1>
-    <div class="sub" id="actualizado">Cargando datos…</div>
+    <div class="fila-btn" style="align-items:center"><div class="sub" id="actualizado">Cargando…</div><button class="btn sec chico" id="salir" type="button" hidden>Salir</button></div>
   </header>
 
-  <section aria-label="Activos" class="lista" id="lista"></section>
-  <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Claude en el chat.</div>
-
-  <article class="ficha" id="ficha" hidden></article>
-
-  <form class="pedir" id="pedir">
-    <label for="tk">Agregar un activo a la lista</label>
-    <input id="tk" name="tk" placeholder="Ej. NVDA" maxlength="12" autocomplete="off" required>
-    <button type="submit">Agregar</button>
-    <div class="msg" id="msg">Acciones de EE. UU. por su ticker; materias primas: GC=F oro, SI=F plata, CL=F petróleo, HG=F cobre. Se analiza en la próxima actualización diaria.</div>
+  <form class="login" id="login" hidden>
+    <h2>Acceso privado</h2>
+    <p class="aviso">Solo el dueño puede ver este tablero. Entra con tu correo y contraseña.</p>
+    <label for="lg-email">Correo</label>
+    <input class="campo" id="lg-email" type="email" autocomplete="username" required>
+    <label for="lg-pass">Contraseña</label>
+    <input class="campo" id="lg-pass" type="password" autocomplete="current-password" minlength="8" required>
+    <div class="fila-btn"><button class="btn" type="submit">Entrar</button><button class="btn sec" type="button" id="lg-crear">Crear cuenta</button></div>
+    <p class="aviso" id="lg-msg">La primera vez, toca "Crear cuenta" con una contraseña de al menos 8 caracteres y luego pídele a Claude que la active.</p>
   </form>
 
-  <p class="nota">Precios de Yahoo Finance con retraso. El puntaje combina señales técnicas (tendencia, promedios, RSI, MACD) y fundamentales (crecimiento, márgenes, rentabilidad, deuda, valoración) en una escala de −100 a +100. Los niveles de stop y objetivo son referenciales (2 y 3 veces el rango diario promedio). Es información para tu propio análisis, no una recomendación de compra o venta.</p>
+  <div id="app" hidden style="display:grid;gap:22px">
+    <section class="panel" aria-labelledby="t-cartera">
+      <h3 id="t-cartera">Mi cartera</h3>
+      <div class="resumen" id="cartera-resumen"></div>
+      <div class="tabla"><table id="cartera-tabla"></table></div>
+      <form class="alta" id="alta">
+        <label>Ticker<input class="campo" id="al-sym" maxlength="12" required placeholder="OUST" style="text-transform:uppercase"></label>
+        <label>Cantidad<input class="campo" id="al-cant" type="number" step="any" min="0" required></label>
+        <label>Precio compra<input class="campo" id="al-precio" type="number" step="any" min="0" required></label>
+        <label>Fecha<input class="campo" id="al-fecha" type="date"></label>
+        <label>Stop (opcional)<input class="campo" id="al-stop" type="number" step="any" min="0"></label>
+        <button class="btn" type="submit">Agregar compra</button>
+      </form>
+      <p class="aviso" id="al-msg"></p>
+    </section>
+
+    <div class="dos">
+      <section class="panel" aria-labelledby="t-cal"><h3 id="t-cal">Próximos reportes</h3><ul class="cal" id="calendario"></ul></section>
+      <section class="panel" aria-labelledby="t-prueba"><h3 id="t-prueba">¿Funciona el puntaje?</h3><div id="prueba"></div></section>
+    </div>
+
+    <section aria-label="Activos" class="lista" id="lista"></section>
+    <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Claude en el chat.</div>
+
+    <article class="ficha" id="ficha" hidden></article>
+
+    <form class="pedir" id="pedir">
+      <label for="tk">Agregar un activo a la lista</label>
+      <input id="tk" name="tk" placeholder="Ej. NVDA" maxlength="12" autocomplete="off" required>
+      <button type="submit">Agregar</button>
+      <div class="msg" id="msg">Acciones de EE. UU. por su ticker; materias primas: GC=F oro, SI=F plata, CL=F petróleo, HG=F cobre. Se analiza en la próxima actualización diaria.</div>
+    </form>
+
+    <p class="nota">Precios de Yahoo Finance con retraso. El puntaje combina señales técnicas (tendencia, promedios, RSI, MACD) y fundamentales (crecimiento, márgenes, rentabilidad, deuda, valoración) en una escala de −100 a +100. Los niveles de stop y objetivo son referenciales (2 y 3 veces el rango diario promedio). Es información para tu propio análisis, no una recomendación de compra o venta.</p>
+  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -217,27 +290,54 @@ function renderLista(){
 }
 
 function chart(a){
-  const t=a.tecnico,F=t.fechas||[],C=t.cierres||[],S5=t.sma50s||[],S2=t.sma200s||[];
+  const t=a.tecnico,F=t.fechas||[],C=t.cierres||[],S5=t.sma50s||[],S2=t.sma200s||[],BS=t.bb_sup||[],BI=t.bb_inf||[],V=t.volumenes||[];
   if(C.length<2)return"";
-  const W=720,H=280,L=56,R=12,T=12,B=28;
-  const vals=[...C,...S5,...S2].filter(v=>v!=null);
-  let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.06;lo-=pad;hi+=pad;
-  const x=i=>L+i*(W-L-R)/(C.length-1), y=v=>T+(hi-v)*(H-T-B)/(hi-lo);
+  const W=720,H=330,L=56,R=12,T=12,VB=46,B=28,PB=H-B-VB-8;
+  const vals=[...C,...S5,...S2,...BS,...BI].filter(v=>v!=null);
+  let lo=Math.min(...vals),hi=Math.max(...vals);const pad=(hi-lo)*.05;lo-=pad;hi+=pad;
+  const x=i=>L+i*(W-L-R)/(C.length-1), y=v=>T+(hi-v)*(PB-T)/(hi-lo);
   const path=arr=>{let d="",on=false;arr.forEach((v,i)=>{if(v==null){on=false;return}d+=(on?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1);on=true});return d};
   const step=(hi-lo)/4;let grid="";
   for(let k=0;k<=4;k++){const v=lo+step*k;grid+=`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="JetBrains Mono, monospace">${fmt(v,v>=1000?0:2)}</text>`}
   const meses=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];let xl="",prev="";
   F.forEach((f,i)=>{const m=f.slice(0,7);if(m!==prev&&i>5&&i<F.length-8&&+f.slice(5,7)%2===1){xl+=`<text x="${x(i)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${meses[+f.slice(5,7)-1]} ${f.slice(2,4)}</text>`}prev=m});
-  const area=path(C)+`L${x(C.length-1)} ${H-B}L${L} ${H-B}Z`;
+  // Banda de Bollinger
+  let band="";const idx=BS.map((v,i)=>v!=null&&BI[i]!=null?i:-1).filter(i=>i>=0);
+  if(idx.length>2){band="M"+idx.map(i=>x(i).toFixed(1)+" "+y(BS[i]).toFixed(1)).join("L")+"L"+idx.slice().reverse().map(i=>x(i).toFixed(1)+" "+y(BI[i]).toFixed(1)).join("L")+"Z"}
+  // Volumen
+  const vmax=Math.max(1,...V);const vy0=H-B,bw=Math.max(1,(W-L-R)/C.length-0.6);let vol="";
+  if(V.some(v=>v>0))V.forEach((v,i)=>{const hh=v/vmax*VB;const up=i>0&&C[i]>=C[i-1];vol+=`<rect x="${(x(i)-bw/2).toFixed(1)}" y="${(vy0-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${hh.toFixed(1)}" fill="${up?"var(--up)":"var(--down)"}" opacity=".45"/>`});
+  const area=path(C)+`L${x(C.length-1)} ${PB}L${L} ${PB}Z`;
   const last=C[C.length-1];
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Precio de ${esc(a.simbolo)} en el último año con promedios de 50 y 200 días">
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Precio de ${esc(a.simbolo)} en el último año con promedios de 50 y 200 días, bandas de Bollinger y volumen">
+    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ee6ff" stop-opacity=".22"/><stop offset="1" stop-color="#3ee6ff" stop-opacity="0"/></linearGradient><filter id="glow" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
     ${grid}${xl}
-    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ee6ff" stop-opacity=".28"/><stop offset="1" stop-color="#3ee6ff" stop-opacity="0"/></linearGradient><filter id="glow" x="-5%" y="-20%" width="110%" height="140%"><feGaussianBlur stdDeviation="2.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    ${band?`<path d="${band}" fill="#7c8cff" opacity=".10"/>`:""}
     <path d="${area}" fill="url(#ga)"/>
     <path d="${path(S2)}" fill="none" stroke="var(--sma200)" stroke-width="1.6" stroke-dasharray="5 4"/>
     <path d="${path(S5)}" fill="none" stroke="var(--sma50)" stroke-width="1.6"/>
     <path d="${path(C)}" fill="none" stroke="var(--cyan)" stroke-width="2" filter="url(#glow)"/>
     <circle cx="${x(C.length-1)}" cy="${y(last)}" r="9" fill="var(--cyan)" opacity=".2"/><circle cx="${x(C.length-1)}" cy="${y(last)}" r="4" fill="var(--cyan)"/>
+    <line x1="${L}" x2="${W-R}" y1="${vy0}" y2="${vy0}" stroke="var(--line)"/>
+    ${vol}
+    <text x="${L-6}" y="${vy0-VB+10}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="JetBrains Mono, monospace">VOL</text>
+  </svg>`;
+}
+
+function chartPuntaje(a){
+  const P=a.tecnico.puntajes_hist||[],F=a.tecnico.fechas||[];if(P.length<2)return"";
+  const W=720,H=150,L=40,R=12,T=10,B=24,off=F.length-P.length;
+  const x=i=>L+i*(W-L-R)/(P.length-1),y=v=>T+(100-v)*(H-T-B)/200;
+  let d="";P.forEach((v,i)=>{d+=(i?"L":"M")+x(i).toFixed(1)+" "+y(v).toFixed(1)});
+  const pos=d+`L${x(P.length-1)} ${y(0)}L${L} ${y(0)}Z`;
+  const meses=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];let xl="",prev="";
+  P.forEach((_,i)=>{const f=F[i+off]||"";const m=f.slice(0,7);if(f&&m!==prev&&i>5&&i<P.length-8&&+f.slice(5,7)%2===1){xl+=`<text x="${x(i)}" y="${H-6}" text-anchor="middle" font-size="11" fill="var(--muted)">${meses[+f.slice(5,7)-1]} ${f.slice(2,4)}</text>`}prev=m});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Puntaje técnico diario del último año">
+    <defs><clipPath id="cp-up"><rect x="0" y="0" width="${W}" height="${y(0)}"/></clipPath><clipPath id="cp-dn"><rect x="0" y="${y(0)}" width="${W}" height="${H}"/></clipPath></defs>
+    ${[100,50,0,-50,-100].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" ${v===0?"":'stroke-dasharray="2 4"'}/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="JetBrains Mono, monospace">${v>0?"+":""}${v}</text>`).join("")}
+    <path d="${pos}" fill="var(--up)" opacity=".18" clip-path="url(#cp-up)"/><path d="${pos}" fill="var(--down)" opacity=".18" clip-path="url(#cp-dn)"/>
+    <path d="${d}" fill="none" stroke="var(--ink)" stroke-width="1.4"/>
+    <circle cx="${x(P.length-1)}" cy="${y(P[P.length-1])}" r="4" fill="var(--cyan)"/>${xl}
   </svg>`;
 }
 
@@ -252,6 +352,7 @@ function renderFicha(){
   let html=`<div class="ficha-top">
     <div><h2>${esc(a.nombre)} <span class="mono" style="color:var(--muted);font-size:16px">${esc(a.simbolo)}</span></h2>
       <div class="big">${fmt(t.precio)} <span style="font-size:15px;color:var(--muted)">${esc(a.moneda)}</span> ${varTxt(t.var_dia)}</div>
+      ${a.tipo_cambio_pen?`<div class="pen">≈ S/ ${fmt(t.precio*a.tipo_cambio_pen)} · tipo de cambio ${fmt(a.tipo_cambio_pen,3)}</div>`:""}
       <div class="sub">Cierre del ${esc(a.fecha_precio)} · ${esc(a.tipo)}${a.bolsa?" · "+esc(a.bolsa):""} · analizado ${esc(fechaAct)}</div></div>
     <div class="veredicto"><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span>
       <span class="sub">Puntaje <b class="num" style="color:var(--ink)">${sgn(a.puntaje_total)}</b> · técnico ${sgn(t.puntaje)}${f?` · fundamental ${sgn(f.puntaje)}`:""}</span></div>
@@ -259,7 +360,8 @@ function renderFicha(){
   if(a.contexto)html+=`<div class="contexto"><h3 style="color:var(--brass)">Contexto</h3>${a.contexto.split(/\n+/).map(p=>`<p>${esc(p)}</p>`).join("")}${(a.fuentes||[]).length?`<p style="font-size:12px">Fuentes: ${a.fuentes.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.titulo)}</a>`).join(" · ")}</p>`:""}</div>`;
   html+=bloqueObjetivos(a);
   html+=`<section><h3>Precio último año</h3><div class="chart">${chart(a)}</div>
-    <div class="leyenda"><span><b style="background:var(--cyan)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span></div></section>`;
+    <div class="leyenda"><span><b style="background:var(--cyan)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span><span><b style="background:#7c8cff;opacity:.5;height:8px"></b>Bandas de Bollinger</span><span><b style="background:var(--up);opacity:.6;height:8px"></b>Volumen</span></div></section>`;
+  html+=`<section><h3>Puntaje técnico día a día</h3><div class="chart">${chartPuntaje(a)}</div><p class="nota">Calculado con los datos que había cada día. Arriba de 0, señales técnicas a favor; abajo, en contra.</p></section>`;
   html+=`<div class="grid2"><section><h3>Análisis técnico</h3>${motivos(t.motivos)}</section>
     <section><h3>Indicadores</h3><dl class="kv">
       <dt>Variación 1 mes / 3 meses</dt><dd>${sgn(t.var_1m)}% / ${sgn(t.var_3m)}%</dd>
@@ -270,12 +372,16 @@ function renderFicha(){
       <dt>Rango 52 semanas</dt><dd>${fmt(t.min52)} – ${fmt(t.max52)}</dd>
       <dt>Volatilidad diaria (ATR)</dt><dd>${fmt(t.atr)} (${fmt(t.atr_pct,1)}%)</dd>
       <dt>Volumen 20d vs 60d</dt><dd>${t.volumen_rel==null?"—":fmt(t.volumen_rel,2)+"×"}</dd>
+      <dt>Bandas de Bollinger</dt><dd>${t.bollinger?fmt(t.bollinger.inf)+" – "+fmt(t.bollinger.sup):"—"}</dd>
+      <dt>Frente al S&amp;P 500 (1m / 3m / 1a)</dt><dd>${t.vs_sp500?`${sgn(t.vs_sp500["1m"])} / ${sgn(t.vs_sp500["3m"])} / ${sgn(t.vs_sp500["1a"])} pts`:"—"}</dd>
     </dl></section></div>`;
   html+=`<section><h3>Niveles a vigilar</h3><div class="niveles">
     ${(t.soportes||[]).map(v=>`<span class="chip"><small>Soporte</small>${fmt(v)}</span>`).join("")}
     ${(t.resistencias||[]).map(v=>`<span class="chip"><small>Resistencia</small>${fmt(v)}</span>`).join("")}
     <span class="chip"><small>Stop ref.</small>${fmt(n.stop_referencial)}</span>
-    <span class="chip"><small>Objetivo ref.</small>${fmt(n.objetivo_referencial)}</span></div></section>`;
+    <span class="chip"><small>Objetivo ref.</small>${fmt(n.objetivo_referencial)}</span></div>
+    ${t.fibonacci?`<div class="niveles" style="margin-top:8px">${Object.entries(t.fibonacci).map(([k,v])=>`<span class="chip"><small>Fibo ${fmt(k*100,1)}%</small>${fmt(v)}</span>`).join("")}</div>`:""}
+    ${a.proximo_reporte?`<p class="aviso" style="margin-top:10px">Próximo reporte: ${a.proximo_reporte.fecha?esc(fechaLarga(a.proximo_reporte.fecha)):"por confirmar"}${a.proximo_reporte.nota?" · "+esc(a.proximo_reporte.nota):""}</p>`:""}</section>`;
   if(f){
     html+=`<div class="grid2"><section><h3>Análisis fundamental</h3>${motivos(f.motivos)}</section>
       <section><h3>Ratios</h3><dl class="kv">
@@ -296,34 +402,122 @@ function renderFicha(){
   el.innerHTML=html;
 }
 
+
+let cartera=[], estudio=null, pendientes=[], sb=null;
+const fechaLarga=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-PE",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}catch(e){return f}};
+
+function renderCartera(){
+  const precio=s=>{const a=activos.find(x=>x.simbolo===s);return a&&!a.error?a.tecnico.precio:null};
+  const tc=(activos.find(a=>a.tipo_cambio_pen)||{}).tipo_cambio_pen;
+  let inv=0,act=0,conPrecio=true;
+  const filas=cartera.map(c=>{const p=precio(c.simbolo),costo=c.cantidad*c.precio_compra;inv+=costo;
+    if(p==null){conPrecio=false;return{c,p,costo,valor:null}}const valor=c.cantidad*p;act+=valor;return{c,p,costo,valor}});
+  if(!cartera.length){$("#cartera-resumen").innerHTML="";$("#cartera-tabla").innerHTML=`<tbody><tr><td style="text-align:left;font-family:var(--f-body);color:var(--muted)">Todavía no registras compras. Agrega la primera con el formulario.</td></tr></tbody>`;return}
+  const gp=act-inv,gpp=inv?gp/inv*100:0;
+  $("#cartera-resumen").innerHTML=`<div><small>Invertido</small><b>${fmt(inv)}</b></div><div><small>Valor hoy</small><b>${fmt(act)}</b></div>
+    <div><small>Ganancia / pérdida</small><b class="var ${gp>=0?"up":"down"}">${gp>=0?"+":""}${fmt(gp)} (${gp>=0?"+":""}${fmt(gpp,1)}%)</b></div>
+    ${tc?`<div><small>Valor en soles</small><b>S/ ${fmt(act*tc)}</b></div>`:""}${conPrecio?"":`<div><small>Aviso</small><span class="aviso">Algunos tickers no están en la lista y no tienen precio.</span></div>`}`;
+  $("#cartera-tabla").innerHTML=`<thead><tr><th>Ticker</th><th>Cantidad</th><th>Compra</th><th>Precio hoy</th><th>Valor</th><th>G/P</th><th>Peso</th><th>Stop</th><th></th></tr></thead><tbody>${filas.map(({c,p,costo,valor})=>{
+    const g=valor==null?null:valor-costo,gpc=g==null?null:g/costo*100,peso=valor==null||!act?null:valor/act*100;
+    const ds=c.stop&&p?(p/c.stop-1)*100:null;
+    return `<tr><td>${esc(c.simbolo)}</td><td>${fmt(c.cantidad,c.cantidad%1?2:0)}</td><td>${fmt(c.precio_compra)}</td><td>${p==null?"—":fmt(p)}</td><td>${valor==null?"—":fmt(valor)}</td>
+      <td class="var ${g==null?"":g>=0?"up":"down"}">${g==null?"—":(g>=0?"+":"")+fmt(g)+" ("+(g>=0?"+":"")+fmt(gpc,1)+"%)"}</td><td>${peso==null?"—":fmt(peso,0)+"%"}</td>
+      <td class="${ds!=null&&ds<3?"var down":""}">${c.stop?fmt(c.stop)+(ds!=null?" ("+fmt(ds,1)+"% arriba)":""):"—"}</td>
+      <td><button class="btn peligro chico" type="button" data-borrar="${c.id}">Quitar</button></td></tr>`}).join("")}</tbody>`;
+  document.querySelectorAll("[data-borrar]").forEach(b=>b.onclick=async()=>{
+    if(b.dataset.ok!=="1"){b.dataset.ok="1";b.textContent="¿Seguro?";setTimeout(()=>{if(b.isConnected){b.dataset.ok="";b.textContent="Quitar"}},4000);return}
+    const {error}=await sb.from("cartera").delete().eq("id",+b.dataset.borrar);
+    if(error){$("#al-msg").textContent="No se pudo quitar: "+error.message;$("#al-msg").className="aviso err";return}
+    await cargarCartera();
+  });
+}
+
+function renderCalendario(){
+  const hoy=new Date().toISOString().slice(0,10);
+  const items=activos.filter(a=>a.proximo_reporte).map(a=>({s:a.simbolo,n:a.nombre,f:a.proximo_reporte.fecha,nota:a.proximo_reporte.nota}))
+    .sort((a,b)=>(a.f||"9999").localeCompare(b.f||"9999"));
+  $("#calendario").innerHTML=items.length?items.map(i=>`<li><span class="f ${i.f&&i.f<hoy?"pasado":""}">${i.f?esc(i.f.slice(8,10)+"/"+i.f.slice(5,7)):"por conf."}</span><span><b>${esc(i.s)}</b> · ${esc(i.n)}${i.nota?`<br><span class="aviso">${esc(i.nota)}</span>`:""}</span></li>`).join("")
+    :`<li><span class="f">—</span><span class="aviso">Sin fechas registradas. Se completan en la actualización diaria.</span></li>`;
+}
+
+function renderPrueba(){
+  const el=$("#prueba");
+  if(!estudio){el.innerHTML=`<p class="aviso">La prueba todavía no está cargada.</p>`;return}
+  const G=estudio.grupos,base=estudio.base["3m"].promedio;
+  const orden=["Sesgo comprador","Sesgo ligeramente positivo","Neutral / esperar","Sesgo ligeramente negativo","Sesgo vendedor"];
+  const vals=orden.map(g=>G[g]&&G[g]["3m"]).filter(Boolean);const mx=Math.max(base,...vals.map(v=>v.promedio||0))*1.1;
+  el.innerHTML=`<p class="aviso">Rendimiento promedio a 3 meses después de cada señal técnica, en ${estudio.activos.length} activos durante ${estudio.anios} años (${fmt(estudio.base["3m"].n,0)} casos).</p>
+  <div class="barras">${orden.map(g=>{const v=G[g]&&G[g]["3m"];if(!v||!v.n)return"";return `<div class="b"><span>${esc(g.replace("Sesgo ",""))}</span><span class="pista"><i style="width:${Math.max(2,v.promedio/mx*100)}%"></i></span><span class="num">${sgn(v.promedio)}%</span></div>`}).join("")}
+  <div class="b"><span>Cualquier día (base)</span><span class="pista"><i class="base" style="width:${base/mx*100}%"></i></span><span class="num">${sgn(base)}%</span></div></div>
+  <p class="aviso" style="margin-top:6px"><b style="color:var(--amber)">Conclusión:</b> el puntaje técnico <b>no anticipó</b> subidas. Después de un "sesgo vendedor" el precio subió más que el promedio, y después de un "sesgo comprador", menos. Úsalo para leer la tendencia actual, no como señal de compra o venta. La muestra solo incluye empresas que siguen existiendo, lo que infla los resultados.</p>`;
+}
+
 function render(){
   activos.sort((a,b)=>(a.orden??99)-(b.orden??99)||String(a.simbolo).localeCompare(b.simbolo));
   const fechas=activos.map(a=>a.actualizado).filter(Boolean).sort();
   $("#actualizado").textContent=fechas.length?"Actualizado "+new Date(fechas[fechas.length-1]).toLocaleString("es-PE",{dateStyle:"medium",timeStyle:"short"}):"Sin datos todavía";
-  renderLista();renderFicha();
+  renderLista();renderFicha();renderCartera();renderCalendario();renderPrueba();
 }
 
+async function cargarCartera(){const {data,error}=await sb.from("cartera").select("*").order("fecha");if(!error){cartera=data||[];renderCartera()}}
+
+async function cargarTodo(){
+  const [ac,ca,es,so]=await Promise.all([
+    sb.from("activos").select("datos,orden").order("orden"),
+    sb.from("cartera").select("*").order("fecha"),
+    sb.from("estudios").select("datos").eq("id","backtest").maybeSingle(),
+    sb.from("solicitudes").select("simbolo")]);
+  if(ac.error){$("#actualizado").textContent="No se pudieron leer los datos ("+ac.error.message+").";return}
+  activos=(ac.data||[]).map(x=>Object.assign({},x.datos,{orden:x.orden}));
+  cartera=ca.data||[];estudio=es.data?es.data.datos:null;pendientes=(so.data||[]).map(x=>x.simbolo);
+  if(!activos.length){$("#actualizado").textContent="Tu cuenta no tiene acceso a estos datos.";}
+  if(pendientes.length)$("#msg").textContent="En cola: "+pendientes.join(", ")+". Se analizan en la próxima actualización (días hábiles, 7:40 a. m. de Lima).";
+  render();
+}
+
+function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSesion;$("#app").style.display=conSesion?"grid":"none";$("#salir").hidden=!conSesion}
+
 (async()=>{
-  const CFG={url:"https://kchzqqnfjytplxlresjd.supabase.co",key:"sb_publishable_keO85lge8lJ6px3BQKRgUA_8CGoy7RU"};
-  const H={apikey:CFG.key,"Content-Type":"application/json"};
-  async function cargar(){
-    try{
-      const r=await fetch(CFG.url+"/rest/v1/activos?select=datos,orden&order=orden.asc",{headers:H});
-      if(!r.ok)throw new Error(r.status);
-      activos=(await r.json()).map(x=>Object.assign({},x.datos,{orden:x.orden}));render();
-    }catch(e){$("#actualizado").textContent="No se pudieron leer los datos. Revisa tu conexión y recarga la página."}
-  }
-  await cargar();
+  if(!window.supabase){$("#actualizado").textContent="No se pudo cargar la conexión. Recarga la página.";return}
+  sb=window.supabase.createClient("https://kchzqqnfjytplxlresjd.supabase.co","sb_publishable_keO85lge8lJ6px3BQKRgUA_8CGoy7RU");
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){mostrar(true);await cargarTodo()}else{mostrar(false);$("#actualizado").textContent="Sesión cerrada"}
+
+  $("#login").addEventListener("submit",async e=>{e.preventDefault();
+    const m=$("#lg-msg");m.className="aviso";m.textContent="Entrando…";
+    const {error}=await sb.auth.signInWithPassword({email:$("#lg-email").value.trim(),password:$("#lg-pass").value});
+    if(error){m.className="aviso err";m.textContent=/confirm/i.test(error.message)?"Tu cuenta aún no está activada. Pídele a Claude que la active.":"Correo o contraseña incorrectos.";return}
+    $("#lg-pass").value="";mostrar(true);await cargarTodo();
+  });
+  $("#lg-crear").addEventListener("click",async()=>{
+    const m=$("#lg-msg"),em=$("#lg-email").value.trim(),pw=$("#lg-pass").value;
+    if(!em||pw.length<8){m.className="aviso err";m.textContent="Escribe tu correo y una contraseña de al menos 8 caracteres.";return}
+    const {data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:location.origin+location.pathname}});
+    if(error){m.className="aviso err";m.textContent="No se pudo crear la cuenta: "+error.message;return}
+    if(data.session){mostrar(true);await cargarTodo();return}
+    m.className="aviso";m.textContent="Cuenta creada. Pídele a Claude que la active y luego entra con tu correo y contraseña.";
+  });
+  $("#salir").addEventListener("click",async()=>{await sb.auth.signOut();activos=[];cartera=[];mostrar(false);$("#actualizado").textContent="Sesión cerrada"});
+
+  try{$("#al-fecha").value=new Date().toISOString().slice(0,10)}catch(e){}
+  $("#alta").addEventListener("submit",async e=>{e.preventDefault();
+    const sym=$("#al-sym").value.trim().toUpperCase(),cant=+$("#al-cant").value,pr=+$("#al-precio").value,st=$("#al-stop").value?+$("#al-stop").value:null;
+    const msg=$("#al-msg");
+    if(!/^[A-Z0-9.=^-]{1,12}$/.test(sym)||!(cant>0)||!(pr>0)){msg.className="aviso err";msg.textContent="Revisa el ticker, la cantidad y el precio.";return}
+    const {error}=await sb.from("cartera").insert({simbolo:sym,cantidad:cant,precio_compra:pr,fecha:$("#al-fecha").value||undefined,stop:st});
+    if(error){msg.className="aviso err";msg.textContent="No se pudo guardar: "+error.message;return}
+    msg.className="aviso";msg.textContent=`Compra de ${sym} registrada.`+(activos.some(a=>a.simbolo===sym)?"":" Ese ticker no está en tu lista: agrégalo abajo para tener su precio.");
+    ["al-sym","al-cant","al-precio","al-stop"].forEach(i=>$("#"+i).value="");await cargarCartera();
+  });
+
   $("#pedir").addEventListener("submit",async e=>{
     e.preventDefault();
     const tk=$("#tk").value.trim().toUpperCase();
     if(!/^[A-Z0-9.=^-]{1,12}$/.test(tk)){$("#msg").textContent="Ese ticker no es válido. Usa letras, números, punto o =, por ejemplo AAPL o GC=F.";return}
-    try{
-      const r=await fetch(CFG.url+"/rest/v1/solicitudes",{method:"POST",headers:Object.assign({Prefer:"return=minimal"},H),body:JSON.stringify({simbolo:tk})});
-      if(r.status===409){$("#msg").textContent=tk+" ya estaba en cola.";return}
-      if(!r.ok)throw new Error(r.status);
-      $("#msg").textContent=`${tk} quedó en cola. Se analizará en la próxima actualización (días hábiles, 7:40 a. m. de Lima).`;$("#tk").value="";
-    }catch(err){$("#msg").textContent="No se pudo guardar el pedido. Inténtalo de nuevo en un momento."}
+    const {error}=await sb.from("solicitudes").insert({simbolo:tk});
+    if(error&&error.code==="23505"){$("#msg").textContent=tk+" ya estaba en cola.";return}
+    if(error){$("#msg").textContent="No se pudo guardar el pedido: "+error.message;return}
+    $("#msg").textContent=`${tk} quedó en cola. Se analizará en la próxima actualización (días hábiles, 7:40 a. m. de Lima).`;$("#tk").value="";
   });
 })();
 </script>
