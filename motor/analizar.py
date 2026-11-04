@@ -207,21 +207,40 @@ def tecnico(filas, bench=None):
 TIPOS = ["quarterlyTotalRevenue", "quarterlyGrossProfit", "quarterlyNetIncome", "quarterlyDilutedEPS",
          "quarterlyOperatingIncome", "quarterlyCashCashEquivalentsAndShortTermInvestments", "quarterlyTotalDebt",
          "quarterlyFreeCashFlow", "trailingPeRatio", "trailingForwardPeRatio", "trailingPsRatio",
-         "trailingMarketCap", "trailingPbRatio"]
+         "trailingMarketCap", "trailingPbRatio", "quarterlyStockholdersEquity", "quarterlyOrdinarySharesNumber",
+         "annualFreeCashFlow"]
+# Montos en la moneda de los estados financieros (se convierten a la moneda de cotización)
+MONTOS = {"quarterlyTotalRevenue", "quarterlyGrossProfit", "quarterlyNetIncome", "quarterlyDilutedEPS",
+          "quarterlyOperatingIncome", "quarterlyCashCashEquivalentsAndShortTermInvestments", "quarterlyTotalDebt",
+          "quarterlyFreeCashFlow", "quarterlyStockholdersEquity", "annualFreeCashFlow"}
 
 
-def fundamentales(sym):
+def tipo_cambio(de, a):
+    if not de or not a or de == a:
+        return 1.0
+    _, f = precios(f"{de}{a}=X")
+    return f[-1][1]
+
+
+def fundamentales(sym, moneda="USD"):
     url = ("https://query1.finance.yahoo.com/ws/fundamentals-timeseries/v1/finance/timeseries/"
            f"{urllib.parse.quote(sym)}?type={','.join(TIPOS)}&period1=1640995200&period2={int(time.time()) + 86400}")
     d = get(url)
-    datos = {}
+    datos, moneda_fin = {}, None
     for r in d["timeseries"]["result"]:
         t = r["meta"]["type"][0]
-        vals = [(x["asOfDate"], x["reportedValue"]["raw"]) for x in (r.get(t) or []) if x and x.get("reportedValue")]
+        filas = [x for x in (r.get(t) or []) if x and x.get("reportedValue")]
+        if t == "quarterlyTotalRevenue" and filas:
+            moneda_fin = filas[-1].get("currencyCode")
+        vals = [(x["asOfDate"], x["reportedValue"]["raw"]) for x in filas]
         if vals:
             datos[t] = sorted(vals)
     if not datos.get("quarterlyTotalRevenue"):
         return None
+    fx = tipo_cambio(moneda_fin, moneda)
+    if fx != 1.0:
+        for t in MONTOS & datos.keys():
+            datos[t] = [(f, v * fx) for f, v in datos[t]]
 
     def ult(t):
         return datos[t][-1][1] if datos.get(t) else None
@@ -284,6 +303,18 @@ def fundamentales(sym):
     f["puntaje"] = max(-100, min(100, puntos))
     f["motivos"] = motivos
     corte = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 730 * 86400))
+    f["moneda_estados"] = moneda_fin
+    f["tipo_cambio_estados"] = None if fx == 1.0 else round(fx, 6)
+    eps = datos.get("quarterlyDilutedEPS", [])
+    fcf_q = datos.get("quarterlyFreeCashFlow", [])
+    f["_vi"] = {
+        "eps_ttm": sum(v for _, v in eps[-4:]) if len(eps) >= 4 else None,
+        "eps_trim": [v for _, v in eps[-4:]],
+        "patrimonio": ult("quarterlyStockholdersEquity"),
+        "acciones": ult("quarterlyOrdinarySharesNumber"),
+        "fcf_ttm": sum(v for _, v in fcf_q[-4:]) if len(fcf_q) >= 4 else None,
+        "fcf_anual": [v for _, v in datos.get("annualFreeCashFlow", [])[-3:]],
+    }
     f["_hist_ps"] = [v for d, v in datos.get("trailingPsRatio", []) if d >= corte]
     f["_hist_fpe"] = [v for d, v in datos.get("trailingForwardPeRatio", []) if d >= corte]
     return f
@@ -375,22 +406,85 @@ def referencia(sym):
     return _CACHE[sym]
 
 
+def valor_intrinseco(f, precio):
+    """Método Value Investing: DCF de 10 años sobre el flujo de caja libre + número de Graham + margen de seguridad."""
+    vi = f.get("_vi") or {}
+    out = {"metodos": [], "supuestos": {}}
+    acciones = vi.get("acciones") or (f["capitalizacion"] / precio if f.get("capitalizacion") else None)
+    caja, deuda = f.get("caja") or 0, f.get("deuda") or 0
+
+    # 1) Flujo de caja descontado
+    base, anual = vi.get("fcf_ttm"), [x for x in vi.get("fcf_anual", []) if x is not None]
+    if base and anual:
+        base = min(base, anual[-1]) if anual[-1] > 0 else None  # conservador: el menor entre 12 meses y el último año
+    if base and base > 0 and acciones:
+        g0 = (f.get("crec_ingresos_ttm") if f.get("crec_ingresos_ttm") is not None else f.get("crec_ingresos_yoy") or 0) / 100
+        g0 = max(0.0, min(0.15, g0))
+        emergente = f.get("moneda_estados") not in (None, "USD")
+        r, gt = (0.12 if emergente else 0.10), 0.025
+        flujo, vp = base, 0.0
+        for anio in range(1, 11):
+            g = g0 if anio <= 5 else g0 + (gt - g0) * (anio - 5) / 5
+            flujo *= 1 + g
+            vp += flujo / (1 + r) ** anio
+        terminal = flujo * (1 + gt) / (r - gt) / (1 + r) ** 10
+        valor = (vp + terminal + caja - deuda) / acciones
+        out["dcf"] = round(valor, 2) if valor > 0 else None
+        out["supuestos"] = {"fcf_base": round(base), "crecimiento_5a": round(g0 * 100, 1), "descuento": round(r * 100), "perpetuo": 2.5}
+        out["metodos"].append("dcf" if valor > 0 else "dcf_negativo")
+    else:
+        out["dcf_motivo"] = "flujo de caja libre negativo o insuficiente"
+
+    # 2) Número de Graham
+    eps, pat = vi.get("eps_ttm"), vi.get("patrimonio")
+    if eps and eps > 0 and pat and pat > 0 and acciones:
+        bvps = pat / acciones
+        out["graham"] = round((22.5 * eps * bvps) ** 0.5, 2)
+        out["eps_ttm"], out["valor_libros_accion"] = round(eps, 2), round(bvps, 2)
+        trim = vi.get("eps_trim") or []
+        if len(trim) == 4 and (min(trim) < 0 or max(trim) > 0.6 * eps):
+            out["graham_nota"] = "Un solo trimestre explica la mayor parte de la utilidad de 12 meses; puede ser un efecto de una vez."
+    else:
+        out["graham_motivo"] = "utilidad de 12 meses negativa o sin valor en libros"
+
+    vals = [v for v in (out.get("dcf"), out.get("graham")) if v]
+    if not vals:
+        out["aplica"] = False
+        return out
+    out["aplica"] = True
+    out["valor"] = round(sum(vals) / len(vals), 2)
+    m = (out["valor"] / precio - 1) * 100
+    out["margen"] = round(m, 1)
+    out["lectura"] = ("Precio con margen de seguridad (30 % o más bajo el valor estimado)" if m >= 30 else
+                      "Precio algo bajo el valor estimado, sin margen de seguridad suficiente" if m >= 0 else
+                      "Precio por encima del valor estimado")
+    avisos = []
+    if m > 100:
+        avisos.append("El valor estimado más que duplica el precio: suele indicar riesgos que el modelo no capta (deuda, país, tipo de cambio, calidad del flujo de caja). Tómalo con mucha cautela.")
+    if out.get("dcf") and out.get("graham") and max(out["dcf"], out["graham"]) > 3 * min(out["dcf"], out["graham"]):
+        avisos.append("Los dos métodos dan resultados muy distintos; la estimación es poco confiable.")
+    if avisos:
+        out["avisos"] = avisos
+    return out
+
+
 def analizar(sym):
     meta, filas = precios(sym)
     t = tecnico(filas, referencia("^GSPC"))
-    f = None if sym in MATERIAS else fundamentales(sym)
+    f = None if sym in MATERIAS else fundamentales(sym, meta.get("currency", "USD"))
     total, etiqueta = sesgo(t["puntaje"], f and f["puntaje"])
     p = t["precio"]
     proy = proyeccion(t, f)
+    vi = valor_intrinseco(f, t["precio"]) if f else None
     if f:
-        f.pop("_hist_ps", None); f.pop("_hist_fpe", None)
+        f.pop("_hist_ps", None); f.pop("_hist_fpe", None); f.pop("_vi", None)
     return {
         "simbolo": sym, "nombre": NOMBRES.get(sym) or meta.get("longName") or meta.get("shortName") or sym,
         "tipo": "materia prima" if sym in MATERIAS else "acción",
         "moneda": meta.get("currency", "USD"), "bolsa": meta.get("fullExchangeName"),
         "actualizado": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "fecha_precio": t["fechas"][-1],
-        "tecnico": t, "fundamental": f, "puntaje_total": total, "sesgo": etiqueta, "proyeccion": proy,
+        "tecnico": t, "fundamental": f, "puntaje_total": total, "sesgo": etiqueta, "proyeccion": proy, "valor_intrinseco": vi,
         "tipo_cambio_pen": (referencia("PEN=X") or [[None, None]])[-1][1] if meta.get("currency", "USD") == "USD" else None,
         "niveles": {"stop_referencial": round(p - 2 * t["atr"], 4), "objetivo_referencial": round(p + 3 * t["atr"], 4)},
     }

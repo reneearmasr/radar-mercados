@@ -114,6 +114,7 @@ tbody tr:hover{background:var(--cyan-dim)}
 .rango .linea{position:absolute;top:0;left:0;right:0;height:28px;border-bottom:1px solid var(--line)}
 .rango .mk{position:absolute;top:6px;width:2px;height:16px;transform:translateX(-50%)}
 .rango .mk.act{background:var(--cyan);box-shadow:0 0 8px var(--cyan)} .rango .mk.obj2{background:var(--amber);box-shadow:0 0 8px var(--amber)}
+.obj .pill{white-space:normal;line-height:1.35}
 .objtxt{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
 
 
@@ -281,6 +282,31 @@ function bloqueObjetivos(a){
   return h+`</div></section>`;
 }
 
+function bloqueValor(a){
+  if(a.tipo==="materia prima")return "";
+  const v=a.valor_intrinseco,p=pv(a).precio;
+  let h=`<section><h3>Método Value Investing</h3>`;
+  if(!v||!v.aplica){
+    return h+`<div class="obj"><span class="etq">Valor intrínseco</span><span class="det">No aplica a esta empresa: ${esc([v&&v.dcf_motivo,v&&v.graham_motivo].filter(Boolean).join("; ")||"faltan datos financieros")}. El método funciona con empresas que ya generan ganancias y flujo de caja.</span></div></section>`;
+  }
+  const m=(v.valor/p-1)*100,cls=m>=30?"up":m>=0?"flat":"down";
+  h+=`<div class="objetivos">
+    <div class="obj principal"><span class="etq">Valor intrínseco estimado</span>
+      <span class="val">${fmt(v.valor)} <span class="var ${m>=0?"up":"down"} num">${m>=0?"+":""}${fmt(m,1)}%</span></span>
+      <span class="det">Margen de seguridad frente al precio de ${fmt(p)}</span>
+      <span class="pill ${cls}" style="justify-self:start;margin-top:4px">${esc(v.lectura)}</span></div>`;
+  h+=v.dcf?`<div class="obj"><span class="etq">Flujo de caja descontado (DCF)</span><span class="val">${fmt(v.dcf)}</span>
+      <span class="det">Flujo de caja libre base ${fmtM(v.supuestos.fcf_base)}, crece ${fmt(v.supuestos.crecimiento_5a,1)}% anual por 5 años y baja a ${fmt(v.supuestos.perpetuo,1)}% en 10 años. Tasa de descuento ${v.supuestos.descuento}%. Resta la deuda neta.</span></div>`
+     :`<div class="obj"><span class="etq">Flujo de caja descontado (DCF)</span><span class="det">No aplica: ${esc(v.dcf_motivo||"")}.</span></div>`;
+  h+=v.graham?`<div class="obj"><span class="etq">Número de Graham</span><span class="val">${fmt(v.graham)}</span>
+      <span class="det">√(22,5 × utilidad por acción ${fmt(v.eps_ttm)} × valor en libros por acción ${fmt(v.valor_libros_accion)})${v.graham_nota?". "+esc(v.graham_nota):""}</span></div>`
+     :`<div class="obj"><span class="etq">Número de Graham</span><span class="det">No aplica: ${esc(v.graham_motivo||"")}.</span></div>`;
+  h+=`</div>`;
+  if((v.avisos||[]).length)h+=`<p class="aviso" style="margin-top:10px;color:var(--amber)">${v.avisos.map(esc).join(" ")}</p>`;
+  h+=`<p class="nota" style="margin-top:8px">Value investing: comprar cuando el precio está bastante por debajo del valor de la empresa (margen de seguridad de 30 % o más). Es una estimación con supuestos simples, no una recomendación.</p>`;
+  return h+`</section>`;
+}
+
 function renderLista(){
   $("#vacio").hidden=activos.length>0;
   $("#lista").innerHTML=activos.map(a=>{
@@ -367,6 +393,7 @@ function renderFicha(){
   </div>`;
   if(a.contexto)html+=`<div class="contexto"><h3 style="color:var(--brass)">Contexto</h3>${a.contexto.split(/\n+/).map(p=>`<p>${esc(p)}</p>`).join("")}${(a.fuentes||[]).length?`<p style="font-size:12px">Fuentes: ${a.fuentes.map(s=>`<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.titulo)}</a>`).join(" · ")}</p>`:""}</div>`;
   html+=bloqueObjetivos(a);
+  html+=bloqueValor(a);
   html+=`<section><h3>Precio último año</h3><div class="chart">${chart(a)}</div>
     <div class="leyenda"><span><b style="background:var(--cyan)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span><span><b style="background:#7c8cff;opacity:.5;height:8px"></b>Bandas de Bollinger</span><span><b style="background:var(--up);opacity:.6;height:8px"></b>Volumen</span></div></section>`;
   html+=`<section><h3>Puntaje técnico día a día</h3><div class="chart">${chartPuntaje(a)}</div><p class="nota">Calculado con los datos que había cada día. Arriba de 0, señales técnicas a favor; abajo, en contra.</p></section>`;

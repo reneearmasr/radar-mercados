@@ -33,6 +33,15 @@ Cada activo recibe un puntaje técnico y uno fundamental de −100 a +100; el to
 - **Proyección del Radar:** modelo propio. Acciones: 70 % valoración (ventas esperadas × precio/ventas histórico de 2 años, y ganancia esperada × PER futuro histórico) y 30 % tendencia de 3 meses (a la mitad, máximo ±30 %). Materias primas: 50 % tendencia y 50 % regreso al promedio de 200 días.
 - **Resistencia técnica:** próximo máximo reciente por encima del precio.
 
+## Método Value Investing
+
+Valor intrínseco por acción, como promedio de dos métodos, comparado con el precio (margen de seguridad):
+
+- **Flujo de caja descontado (DCF):** flujo de caja libre base (el menor entre los últimos 12 meses y el último año), crecimiento igual al de las ventas (máximo 15 %) por 5 años, que baja a 2,5 % al año 10; tasa de descuento de 10 % (12 % si la empresa reporta en una moneda distinta al dólar); se resta la deuda neta.
+- **Número de Graham:** √(22,5 × utilidad por acción de 12 meses × valor en libros por acción).
+
+No aplica a materias primas ni a empresas con pérdidas o flujo de caja negativo. Los estados en otra moneda (por ejemplo, soles) se convierten a la moneda de cotización.
+
 ## ¿Funciona el puntaje?
 
 `motor/backtest.py` probó el puntaje técnico en 20 activos durante 10 años. No anticipó subidas: después de una "tendencia bajista" el rendimiento a 3 meses fue mayor que el promedio, y después de una "tendencia alcista", menor. Sirve para describir la tendencia, no como señal de compra o venta.
