@@ -154,6 +154,9 @@ form.alta .campo{padding:8px 10px;font-size:13px}
 .barras .num{text-align:right}
 @media (max-width:480px){.barras .b{grid-template-columns:110px 1fr 56px}}
 .pen{font-family:var(--f-mono);font-size:13px;color:var(--muted)}
+.vivo{font-family:var(--f-mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.vivo b{color:var(--up);font-weight:500}
+#refrescar[disabled]{opacity:.6;cursor:wait}
 
 /* Pedir */
 form.pedir{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px dashed var(--line-strong);border-radius:4px;padding:16px}
@@ -177,7 +180,7 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
 <div class="wrap">
   <header>
     <h1>Radar de <span>Mercados</span></h1>
-    <div class="fila-btn" style="align-items:center"><div class="sub" id="actualizado">Cargando…</div><button class="btn sec chico" id="salir" type="button" hidden>Salir</button></div>
+    <div class="fila-btn" style="align-items:center"><div class="sub" id="actualizado">Cargando…</div><button class="btn chico" id="refrescar" type="button" hidden>Actualizar precios</button><button class="btn sec chico" id="salir" type="button" hidden>Salir</button></div>
   </header>
 
   <form class="login" id="login" hidden>
@@ -242,6 +245,10 @@ const clase=s=>s>=10?"up":s<=-10?"down":"flat";
 const varTxt=v=>v==null?"":`<span class="var ${v>0?"up":v<0?"down":""} num">${v>0?"+":""}${fmt(v,2)}%</span>`;
 const pos=s=>((Math.max(-100,Math.min(100,s))+100)/2)+"%";
 
+const horaCorta=iso=>{try{return new Date(iso).toLocaleString("es-PE",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}catch(e){return""}};
+function pv(a){const t=a.tecnico,v=a.vivo;
+  if(v&&v.precio&&(!a.actualizado||v.consultado>a.actualizado))return{precio:v.precio,var:v.var,vivo:true,hora:v.hora};
+  return{precio:t.precio,var:t.var_dia,vivo:false}}
 function objPrincipal(a){
   const an=a.objetivo_analistas,pr=a.proyeccion,p=a.tecnico.precio;
   if(an&&an.promedio)return{v:an.promedio,src:a.tipo==="materia prima"?"bancos":"analistas"};
@@ -280,9 +287,9 @@ function renderLista(){
     if(a.error)return `<div class="fila"><div class="top"><span class="sym">${esc(a.simbolo)}</span></div><div class="nom">No se pudo analizar: ${esc(a.error)}</div></div>`;
     const t=a.tecnico;
     return `<button class="fila" data-s="${esc(a.simbolo)}" aria-pressed="${a.simbolo===elegido}">
-      <div class="top"><span class="sym">${esc(a.simbolo)}</span>${varTxt(t.var_dia)}</div>
+      <div class="top"><span class="sym">${esc(a.simbolo)}</span>${varTxt(pv(a).var)}</div>
       <div class="nom">${esc(a.nombre)}</div>
-      <div class="top"><span class="precio">${fmt(t.precio)}</span><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span></div>
+      ${pv(a).vivo?`<span class="vivo"><b>●</b> en vivo ${esc(horaCorta(pv(a).hora))}</span>`:""}<div class="top"><span class="precio">${fmt(pv(a).precio)}</span><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span></div>
       <div class="gauge" title="Puntaje ${a.puntaje_total}"><i style="left:${pos(a.puntaje_total)}"></i></div>
       ${objLinea(a)}
     </button>`}).join("");
@@ -351,8 +358,9 @@ function renderFicha(){
   const fechaAct=a.actualizado?new Date(a.actualizado).toLocaleString("es-PE",{dateStyle:"medium",timeStyle:"short"}):"";
   let html=`<div class="ficha-top">
     <div><h2>${esc(a.nombre)} <span class="mono" style="color:var(--muted);font-size:16px">${esc(a.simbolo)}</span></h2>
-      <div class="big">${fmt(t.precio)} <span style="font-size:15px;color:var(--muted)">${esc(a.moneda)}</span> ${varTxt(t.var_dia)}</div>
-      ${a.tipo_cambio_pen?`<div class="pen">≈ S/ ${fmt(t.precio*a.tipo_cambio_pen)} · tipo de cambio ${fmt(a.tipo_cambio_pen,3)}</div>`:""}
+      <div class="big">${fmt(pv(a).precio)} <span style="font-size:15px;color:var(--muted)">${esc(a.moneda)}</span> ${varTxt(pv(a).var)}</div>
+      ${a.tipo_cambio_pen?`<div class="pen">≈ S/ ${fmt(pv(a).precio*a.tipo_cambio_pen)} · tipo de cambio ${fmt(a.tipo_cambio_pen,3)}</div>`:""}
+      ${pv(a).vivo?`<div class="vivo"><b>●</b> Precio en vivo (${esc(horaCorta(pv(a).hora))}, con unos minutos de retraso). El análisis técnico y fundamental es del cierre del ${esc(a.fecha_precio)}.</div>`:""}
       <div class="sub">Cierre del ${esc(a.fecha_precio)} · ${esc(a.tipo)}${a.bolsa?" · "+esc(a.bolsa):""} · analizado ${esc(fechaAct)}</div></div>
     <div class="veredicto"><span class="pill ${clase(a.puntaje_total)}">${esc(a.sesgo)}</span>
       <span class="sub">Puntaje <b class="num" style="color:var(--ink)">${sgn(a.puntaje_total)}</b> · técnico ${sgn(t.puntaje)}${f?` · fundamental ${sgn(f.puntaje)}`:""}</span></div>
@@ -407,7 +415,7 @@ let cartera=[], estudio=null, pendientes=[], sb=null;
 const fechaLarga=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-PE",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}catch(e){return f}};
 
 function renderCartera(){
-  const precio=s=>{const a=activos.find(x=>x.simbolo===s);return a&&!a.error?a.tecnico.precio:null};
+  const precio=s=>{const a=activos.find(x=>x.simbolo===s);return a&&!a.error?pv(a).precio:null};
   const tc=(activos.find(a=>a.tipo_cambio_pen)||{}).tipo_cambio_pen;
   let inv=0,act=0,conPrecio=true;
   const filas=cartera.map(c=>{const p=precio(c.simbolo),costo=c.cantidad*c.precio_compra;inv+=costo;
@@ -475,7 +483,7 @@ async function cargarTodo(){
   render();
 }
 
-function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSesion;$("#app").style.display=conSesion?"grid":"none";$("#salir").hidden=!conSesion}
+function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSesion;$("#app").style.display=conSesion?"grid":"none";$("#salir").hidden=!conSesion;$("#refrescar").hidden=!conSesion}
 
 (async()=>{
   if(!window.supabase){$("#actualizado").textContent="No se pudo cargar la conexión. Recarga la página.";return}
@@ -496,6 +504,17 @@ function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSe
     if(error){m.className="aviso err";m.textContent="No se pudo crear la cuenta: "+error.message;return}
     if(data.session){mostrar(true);await cargarTodo();return}
     m.className="aviso";m.textContent="Cuenta creada. Pídele a Claude que la active y luego entra con tu correo y contraseña.";
+  });
+  $("#refrescar").addEventListener("click",async()=>{
+    const b=$("#refrescar");b.disabled=true;b.textContent="Actualizando…";
+    try{
+      const {data,error}=await sb.functions.invoke("actualizar-precios",{method:"POST"});
+      if(error)throw error;
+      const fallos=(data.resultado||[]).filter(r=>r.error).map(r=>r.simbolo);
+      await cargarTodo();
+      $("#actualizado").textContent="Precios actualizados "+new Date().toLocaleTimeString("es-PE",{hour:"2-digit",minute:"2-digit"})+(fallos.length?" · sin datos: "+fallos.join(", "):"");
+    }catch(e){$("#actualizado").textContent="No se pudieron actualizar los precios. Intenta en un momento."}
+    b.disabled=false;b.textContent="Actualizar precios";
   });
   $("#salir").addEventListener("click",async()=>{await sb.auth.signOut();activos=[];cartera=[];mostrar(false);$("#actualizado").textContent="Sesión cerrada"});
 
