@@ -201,7 +201,7 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
       <div class="resumen" id="cartera-resumen"></div>
       <div class="tabla"><table id="cartera-tabla"></table></div>
       <form class="alta" id="alta">
-        <label>Ticker<input class="campo" id="al-sym" maxlength="12" required placeholder="OUST" style="text-transform:uppercase"></label>
+        <label>Ticker o nombre<input class="campo" id="al-sym" maxlength="30" required placeholder="TMDX" list="al-lista" style="text-transform:uppercase"></label><datalist id="al-lista"></datalist>
         <label>Cantidad<input class="campo" id="al-cant" type="number" step="any" min="0" required></label>
         <label>Precio compra<input class="campo" id="al-precio" type="number" step="any" min="0" required></label>
         <label>Fecha<input class="campo" id="al-fecha" type="date"></label>
@@ -442,6 +442,7 @@ let cartera=[], estudio=null, pendientes=[], sb=null;
 const fechaLarga=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-PE",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}catch(e){return f}};
 
 function renderCartera(){
+  const dl=$("#al-lista");if(dl)dl.innerHTML=activos.filter(a=>!a.error).map(a=>`<option value="${esc(a.simbolo)}">${esc(a.nombre)}</option>`).join("");
   const precio=s=>{const a=activos.find(x=>x.simbolo===s);return a&&!a.error?pv(a).precio:null};
   const tc=(activos.find(a=>a.tipo_cambio_pen)||{}).tipo_cambio_pen;
   let inv=0,act=0,conPrecio=true;
@@ -451,7 +452,7 @@ function renderCartera(){
   const gp=act-inv,gpp=inv?gp/inv*100:0;
   $("#cartera-resumen").innerHTML=`<div><small>Invertido</small><b>${fmt(inv)}</b></div><div><small>Valor hoy</small><b>${fmt(act)}</b></div>
     <div><small>Ganancia / pérdida</small><b class="var ${gp>=0?"up":"down"}">${gp>=0?"+":""}${fmt(gp)} (${gp>=0?"+":""}${fmt(gpp,1)}%)</b></div>
-    ${tc?`<div><small>Valor en soles</small><b>S/ ${fmt(act*tc)}</b></div>`:""}${conPrecio?"":`<div><small>Aviso</small><span class="aviso">Algunos tickers no están en la lista y no tienen precio.</span></div>`}`;
+    ${tc?`<div><small>Valor en soles</small><b>S/ ${fmt(act*tc)}</b></div>`:""}${conPrecio?"":`<div><small>Aviso</small><span class="aviso">Algunas compras usan un ticker que no está en tu lista (por ejemplo, el nombre en vez del ticker) y no tienen precio. Agrega el ticker abajo o quita esa compra y regístrala con el ticker correcto.</span></div>`}`;
   $("#cartera-tabla").innerHTML=`<thead><tr><th>Ticker</th><th>Cantidad</th><th>Compra</th><th>Precio hoy</th><th>Valor</th><th>G/P</th><th>Peso</th><th>Stop</th><th></th></tr></thead><tbody>${filas.map(({c,p,costo,valor})=>{
     const g=valor==null?null:valor-costo,gpc=g==null?null:g/costo*100,peso=valor==null||!act?null:valor/act*100;
     const ds=c.stop&&p?(p/c.stop-1)*100:null;
@@ -547,8 +548,12 @@ function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSe
 
   try{$("#al-fecha").value=new Date().toISOString().slice(0,10)}catch(e){}
   $("#alta").addEventListener("submit",async e=>{e.preventDefault();
-    const sym=$("#al-sym").value.trim().toUpperCase(),cant=+$("#al-cant").value,pr=+$("#al-precio").value,st=$("#al-stop").value?+$("#al-stop").value:null;
+    let sym=$("#al-sym").value.trim().toUpperCase();const cant=+$("#al-cant").value,pr=+$("#al-precio").value,st=$("#al-stop").value?+$("#al-stop").value:null;
     const msg=$("#al-msg");
+    if(sym&&!activos.some(x=>x.simbolo===sym)){
+      const n=sym.toLowerCase(),hit=activos.find(x=>!x.error&&String(x.nombre||"").toLowerCase().replace(/[^a-z0-9]/g,"").includes(n.replace(/[^a-z0-9]/g,"")));
+      if(hit){sym=hit.simbolo;$("#al-sym").value=sym}
+    }
     if(!/^[A-Z0-9.=^-]{1,12}$/.test(sym)||!(cant>0)||!(pr>0)){msg.className="aviso err";msg.textContent="Revisa el ticker, la cantidad y el precio.";return}
     const {error}=await sb.from("cartera").insert({simbolo:sym,cantidad:cant,precio_compra:pr,fecha:$("#al-fecha").value||undefined,stop:st});
     if(error){msg.className="aviso err";msg.textContent="No se pudo guardar: "+error.message;return}
