@@ -179,6 +179,16 @@ form.alta .campo{padding:8px 10px;font-size:13px}
 @media (prefers-reduced-motion:reduce){.obj.principal::after,.fila[aria-pressed="true"]::after,.panel.luz::after{--ang:300deg;opacity:.5}}
 @keyframes luz-giro{to{--ang:360deg}}
 
+/* Explicación de gráficos */
+.expl{display:grid;gap:10px;margin-top:10px;font-size:13.5px;line-height:1.55;max-width:80ch}
+.expl .hoy{border-left:2px solid var(--cyan);padding:8px 12px;background:linear-gradient(90deg,var(--cyan-dim),transparent 85%)}
+.expl .hoy b.t{display:block;font-family:var(--f-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:4px;font-weight:500}
+.expl ul{margin:0;padding-left:18px;display:grid;gap:3px}
+.expl details{color:var(--muted)}
+.expl summary{cursor:pointer;font-family:var(--f-mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.expl summary:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.expl details ul{margin-top:6px}
+
 /* Pedir */
 form.pedir{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px dashed var(--line-strong);border-radius:4px;padding:16px}
 form.pedir label{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);flex-basis:100%}
@@ -291,6 +301,7 @@ function bloqueObjetivos(a){
       <span class="val">${fmt(an.promedio)} ${pct(an.promedio)}</span>
       <span class="det">Rango ${fmt(an.bajo)} – ${fmt(an.alto)}${an.analistas?` · ${an.analistas} ${a.tipo==="materia prima"?"bancos":"analistas"}`:""}${an.consenso?` · consenso: ${esc(an.consenso)}`:""}</span>
       <div class="rango" aria-hidden="true"><div class="linea"></div>${an.bajo!=null&&an.alto!=null?`<div class="barra" style="left:${X(an.bajo)};width:calc(${X(an.alto)} - ${X(an.bajo)})"></div>`:""}<div class="mk act" style="left:${X(p)}" title="Precio actual"></div><div class="mk obj2" style="left:${X(an.promedio)}" title="Objetivo"></div></div>
+      <span class="det"><b style="color:var(--cyan)">▮</b> precio actual · <b style="color:var(--amber)">▮</b> objetivo promedio · barra: rango entre el objetivo más bajo y el más alto. ${p<(an.bajo??0)?"El precio está incluso por debajo del objetivo más pesimista.":p>(an.alto??Infinity)?"El precio ya supera el objetivo más optimista.":"El precio está dentro del rango de los analistas."}</span>
       <span class="det">${an.fecha?"Dato del "+esc(an.fecha)+". ":""}${an.nota?esc(an.nota)+" ":""}${an.url?`<a href="${esc(an.url)}" target="_blank" rel="noopener" style="color:var(--ink)">${esc(an.fuente||"Fuente")}</a>`:""}</span></div>`;
   }else{
     h+=`<div class="obj"><span class="etq">Analistas</span><span class="det">No se encontró un objetivo publicado; se usa la proyección del Radar.</span></div>`;
@@ -351,6 +362,42 @@ function renderLista(){
       ${objLinea(a)}
     </button>`}).join("");
   document.querySelectorAll(".fila[data-s]").forEach(b=>b.onclick=()=>{elegido=b.dataset.s;try{localStorage.setItem("radar-elegido",elegido)}catch(e){};renderLista();renderFicha();$("#ficha").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth",block:"start"})});
+}
+
+function pctTxt(x){return (x>0?"+":"")+fmt(x,1)+"%"}
+function explicarPrecio(a){
+  const t=a.tecnico,p=t.precio,C=t.cierres||[],out=[];
+  if(t.sma200){const d=(p/t.sma200-1)*100;out.push(`El precio está ${d>=0?"<b>por encima</b>":"<b>por debajo</b>"} de su promedio de 200 días (${pctTxt(d)}): la tendencia de largo plazo es ${d>=0?"alcista":"bajista"}.`)}
+  if(t.sma50){const d=(p/t.sma50-1)*100;out.push(`Frente al promedio de 50 días está ${pctTxt(d)}${t.sma200?(t.sma50>t.sma200?"; el promedio de 50 está sobre el de 200, señal de fuerza de mediano plazo.":"; el promedio de 50 está bajo el de 200, señal de debilidad de mediano plazo."):"."}`)}
+  if(t.bollinger){const b=t.bollinger,pos=(p-b.inf)/((b.sup-b.inf)||1);
+    out.push(pos>0.9?"Está pegado al borde superior de la banda de Bollinger: subió rápido y podría tomar una pausa.":pos<0.1?"Está pegado al borde inferior de la banda de Bollinger: cayó rápido y podría rebotar o seguir débil.":`Está dentro de la banda de Bollinger (${pos>0.5?"en la mitad superior":"en la mitad inferior"}), un movimiento normal.`)}
+  if(t.volumen_rel!=null)out.push(t.volumen_rel>=1.3?`El volumen de las últimas 4 semanas es ${fmt(t.volumen_rel,1)} veces el promedio: hay más interés de lo habitual.`:t.volumen_rel<=0.75?"El volumen reciente está por debajo de lo habitual: el movimiento tiene poca participación.":"El volumen reciente está en niveles normales.");
+  if(t.var_1a!=null)out.push(`En el último año el precio ${t.var_1a>=0?"subió":"bajó"} ${fmt(Math.abs(t.var_1a),1)}%; hoy está ${fmt(Math.abs((p/t.max52-1)*100),0)}% bajo su máximo y ${fmt((p/t.min52-1)*100,0)}% sobre su mínimo del año.`);
+  return `<div class="expl"><div class="hoy"><b class="t">Qué muestra hoy</b><ul>${out.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+  <details><summary>Cómo leer este gráfico</summary><ul>
+    <li><b>Línea cian:</b> precio de cierre de cada día del último año. El punto final es el último precio.</li>
+    <li><b>Línea azul:</b> promedio de los últimos 50 días. Muestra la tendencia de mediano plazo.</li>
+    <li><b>Línea ámbar punteada:</b> promedio de los últimos 200 días. Muestra la tendencia de largo plazo; muchos inversionistas la usan como frontera entre mercado alcista y bajista.</li>
+    <li><b>Banda violeta (Bollinger):</b> el rango en el que el precio suele moverse. Salirse por arriba o por abajo indica un movimiento fuera de lo normal.</li>
+    <li><b>Barras de abajo (volumen):</b> cuántas acciones se negociaron cada día; verde si ese día subió, rojo si bajó. Un movimiento con mucho volumen tiene más respaldo.</li>
+  </ul></details></div>`;
+}
+function explicarPuntaje(a){
+  const P=a.tecnico.puntajes_hist||[];if(P.length<2)return"";
+  const hoy=P[P.length-1],mes=P[Math.max(0,P.length-22)],pos=P.filter(v=>v>0).length/P.length*100;
+  const mx=Math.max(...P),mn=Math.min(...P);
+  const etiqueta=v=>v>=35?"alcista":v>=10?"ligeramente alcista":v>-10?"lateral":v>-35?"ligeramente bajista":"bajista";
+  const cambio=hoy-mes;
+  return `<div class="expl"><div class="hoy"><b class="t">Qué muestra hoy</b><ul>
+    <li>Hoy el puntaje es <b>${sgn(hoy)}</b> (tendencia ${etiqueta(hoy)}); hace un mes era ${sgn(mes)} (${etiqueta(mes)}). ${Math.abs(cambio)<10?"Se mantiene parecido.":cambio>0?"Mejoró en el último mes.":"Empeoró en el último mes."}</li>
+    <li>En el último año estuvo en zona positiva el ${fmt(pos,0)}% de los días; su punto más alto fue ${sgn(mx)} y el más bajo ${sgn(mn)}.</li>
+  </ul></div>
+  <details><summary>Cómo leer este gráfico</summary><ul>
+    <li>Cada punto es el puntaje técnico de ese día, calculado solo con la información que existía ese día.</li>
+    <li><b>Zona verde (sobre 0):</b> la mayoría de señales técnicas eran favorables (precio sobre sus promedios, impulso al alza).</li>
+    <li><b>Zona roja (bajo 0):</b> la mayoría de señales eran desfavorables.</li>
+    <li>Sirve para ver si la tendencia se está fortaleciendo o debilitando. La prueba de 10 años mostró que <b>no anticipa</b> el precio futuro: describe el presente.</li>
+  </ul></details></div>`;
 }
 
 function chart(a){
@@ -426,8 +473,8 @@ function renderFicha(){
   html+=bloqueObjetivos(a);
   html+=bloqueValor(a);
   html+=`<section><h3>Precio último año</h3><div class="chart">${chart(a)}</div>
-    <div class="leyenda"><span><b style="background:var(--cyan)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span><span><b style="background:#7c8cff;opacity:.5;height:8px"></b>Bandas de Bollinger</span><span><b style="background:var(--up);opacity:.6;height:8px"></b>Volumen</span></div></section>`;
-  html+=`<section><h3>Puntaje técnico día a día</h3><div class="chart">${chartPuntaje(a)}</div><p class="nota">Calculado con los datos que había cada día. Arriba de 0, señales técnicas a favor; abajo, en contra.</p></section>`;
+    <div class="leyenda"><span><b style="background:var(--cyan)"></b>Precio</span><span><b style="background:var(--sma50)"></b>Promedio 50 días</span><span><b style="background:var(--sma200)"></b>Promedio 200 días</span><span><b style="background:#7c8cff;opacity:.5;height:8px"></b>Bandas de Bollinger</span><span><b style="background:var(--up);opacity:.6;height:8px"></b>Volumen</span></div>${explicarPrecio(a)}</section>`;
+  html+=`<section><h3>Puntaje técnico día a día</h3><div class="chart">${chartPuntaje(a)}</div>${explicarPuntaje(a)}</section>`;
   html+=`<div class="grid2"><section><h3>Análisis técnico</h3>${motivos(t.motivos)}</section>
     <section><h3>Indicadores</h3><dl class="kv">
       <dt>Variación 1 mes / 3 meses</dt><dd>${sgn(t.var_1m)}% / ${sgn(t.var_3m)}%</dd>
@@ -523,6 +570,7 @@ function renderPrueba(){
   const orden=["Tendencia alcista","Tendencia ligeramente alcista","Tendencia lateral","Tendencia ligeramente bajista","Tendencia bajista"];
   const vals=orden.map(g=>G[g]&&G[g]["3m"]).filter(Boolean);const mx=Math.max(base,...vals.map(v=>v.promedio||0))*1.1;
   el.innerHTML=`<p class="aviso">Rendimiento promedio a 3 meses después de cada señal técnica, en ${estudio.activos.length} activos durante ${estudio.anios} años (${fmt(estudio.base["3m"].n,0)} casos).</p>
+  <p class="aviso" style="margin:2px 0 6px">Cada barra muestra cuánto subió en promedio el precio en los 3 meses siguientes a un día con esa tendencia. La barra gris es la referencia: lo que subió en promedio cualquier día. Si el puntaje sirviera para predecir, la barra "alcista" sería la más larga y la "bajista" la más corta.</p>
   <div class="barras">${orden.map(g=>{const v=G[g]&&G[g]["3m"];if(!v||!v.n)return"";return `<div class="b"><span>${esc(g.replace("Tendencia ",""))}</span><span class="pista"><i style="width:${Math.max(2,v.promedio/mx*100)}%"></i></span><span class="num">${sgn(v.promedio)}%</span></div>`}).join("")}
   <div class="b"><span>Cualquier día (base)</span><span class="pista"><i class="base" style="width:${base/mx*100}%"></i></span><span class="num">${sgn(base)}%</span></div></div>
   <p class="aviso" style="margin-top:6px"><b style="color:var(--amber)">Conclusión:</b> el puntaje técnico <b>no anticipó</b> subidas. Después de una "tendencia bajista" el precio subió más que el promedio, y después de una "tendencia alcista", menos. Describe la tendencia actual; no es una señal de compra o venta. La muestra solo incluye empresas que siguen existiendo, lo que infla los resultados.</p>`;
