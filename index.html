@@ -225,7 +225,7 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
     <label for="lg-pass">Contraseña</label>
     <input class="campo" id="lg-pass" type="password" autocomplete="current-password" minlength="8" required>
     <div class="fila-btn"><button class="btn" type="submit">Entrar</button><button class="btn sec" type="button" id="lg-crear">Crear cuenta</button></div>
-    <p class="aviso" id="lg-msg">La primera vez, toca "Crear cuenta" con una contraseña de al menos 8 caracteres y luego pídele a Claude que la active.</p>
+    <p class="aviso" id="lg-msg">La primera vez, toca "Crear cuenta" con una contraseña de al menos 8 caracteres y luego pídele a Renee que la autorice.</p>
   </form>
 
   <div id="app" hidden style="display:grid;gap:22px">
@@ -248,7 +248,7 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
 
     <h2 class="titulo-seccion" id="t-recomendadas">Acciones recomendadas</h2>
     <section aria-labelledby="t-recomendadas" class="lista" id="lista"></section>
-    <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Claude en el chat.</div>
+    <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Renee.</div>
 
     <article class="ficha" id="ficha" hidden></article>
 
@@ -600,7 +600,7 @@ async function cargarTodo(){
   if(ac.error){$("#actualizado").textContent="No se pudieron leer los datos ("+ac.error.message+").";return}
   activos=(ac.data||[]).map(x=>Object.assign({},x.datos,{orden:x.orden}));
   window.carteraTodas=ca.data||[];yo=me.data&&me.data.user?me.data.user.id:null;usuarios=us.data||[];if(!viendo||!usuarios.some(u=>u.id===viendo))viendo=yo;estudio=es.data?es.data.datos:null;pendientes=(so.data||[]).map(x=>x.simbolo);
-  if(!activos.length){$("#actualizado").textContent="Tu cuenta no tiene acceso a estos datos.";}
+  if(!activos.length){$("#actualizado").textContent="Tu cuenta todavía no tiene acceso. Pídele a Renee que la autorice.";}
   if(pendientes.length)$("#msg").textContent="En cola: "+pendientes.join(", ")+". Se analizan en la próxima actualización (días hábiles, 7:40 a. m. de Lima).";
   render();
 }
@@ -616,7 +616,7 @@ function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSe
   $("#login").addEventListener("submit",async e=>{e.preventDefault();
     const m=$("#lg-msg");m.className="aviso";m.textContent="Entrando…";
     const {error}=await sb.auth.signInWithPassword({email:$("#lg-email").value.trim(),password:$("#lg-pass").value});
-    if(error){m.className="aviso err";m.textContent=/confirm/i.test(error.message)?"Tu cuenta aún no está activada. Pídele a Claude que la active.":"Correo o contraseña incorrectos.";return}
+    if(error){m.className="aviso err";m.textContent=/confirm/i.test(error.message)?"Tu cuenta aún no está autorizada. Pídele a Renee que la autorice.":"Correo o contraseña incorrectos.";return}
     $("#lg-pass").value="";mostrar(true);await cargarTodo();
   });
   $("#lg-crear").addEventListener("click",async()=>{
@@ -625,7 +625,7 @@ function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSe
     const {data,error}=await sb.auth.signUp({email:em,password:pw,options:{emailRedirectTo:location.origin+location.pathname}});
     if(error){m.className="aviso err";m.textContent="No se pudo crear la cuenta: "+error.message;return}
     if(data.session){mostrar(true);await cargarTodo();return}
-    m.className="aviso";m.textContent="Cuenta creada. Pídele a Claude que la active y luego entra con tu correo y contraseña.";
+    m.className="aviso";m.textContent="Cuenta creada. Pídele a Renee que la autorice y luego entra con tu correo y contraseña.";
   });
   $("#refrescar").addEventListener("click",async()=>{
     const b=$("#refrescar");b.disabled=true;b.textContent="Actualizando…";
