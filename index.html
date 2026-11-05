@@ -278,8 +278,9 @@ function objPrincipal(a){
   if(pr&&pr.central)return{v:pr.central,src:"proyección"};
   return null;
 }
-function objLinea(a){const o=objPrincipal(a);if(!o)return"";const pc=(o.v/a.tecnico.precio-1)*100;
-  return `<div class="objtxt">Objetivo 12 m (${o.src}): <span class="num" style="color:var(--ink)">${fmt(o.v)}</span> <span class="var ${pc>0?"up":"down"} num">${pc>0?"+":""}${fmt(pc,0)}%</span></div>`}
+function objLinea(a){const o=objPrincipal(a);if(!o)return"";const p=pv(a).precio,pc=(o.v/p-1)*100,iv=a.objetivo_invalor;
+  return `<div class="objtxt">Objetivo 12 m (${o.src}): <span class="num" style="color:var(--ink)">${fmt(o.v)}</span> <span class="var ${pc>0?"up":"down"} num">${pc>0?"+":""}${fmt(pc,0)}%</span></div>`+
+   (iv&&iv.valor?`<div class="objtxt">InValor: <span class="num" style="color:var(--ink)">${fmt(iv.valor)}</span> <span class="var ${iv.valor>p?"up":"down"} num">${iv.valor>p?"+":""}${fmt((iv.valor/p-1)*100,0)}%</span> · ${esc(iv.recomendacion)}</div>`:"")}
 function bloqueObjetivos(a){
   const p=a.tecnico.precio,an=a.objetivo_analistas,pr=a.proyeccion||{};
   const pct=v=>{const x=(v/p-1)*100;return `<span class="var ${x>0?"up":"down"} num">${x>0?"+":""}${fmt(x,1)}%</span>`};
@@ -293,6 +294,14 @@ function bloqueObjetivos(a){
       <span class="det">${an.fecha?"Dato del "+esc(an.fecha)+". ":""}${an.nota?esc(an.nota)+" ":""}${an.url?`<a href="${esc(an.url)}" target="_blank" rel="noopener" style="color:var(--ink)">${esc(an.fuente||"Fuente")}</a>`:""}</span></div>`;
   }else{
     h+=`<div class="obj"><span class="etq">Analistas</span><span class="det">No se encontró un objetivo publicado; se usa la proyección del Radar.</span></div>`;
+  }
+  const iv=a.objetivo_invalor;
+  if(iv&&iv.valor){
+    h+=`<div class="obj principal" style="--luz:var(--up)"><span class="etq" style="color:var(--up)">InValor · valor fundamental</span>
+      <span class="val">${fmt(iv.valor)} ${pct(iv.valor)}</span>
+      <span class="det">Recomendación: <b style="color:var(--ink)">${esc(iv.recomendacion)}</b>${iv.pe?` · P/E ${esc(iv.pe)}`:""}${iv.cotizacion?` · cotización de referencia ${fmt(iv.cotizacion)}`:""}</span>
+      ${(iv.portafolios||[]).length?`<span class="det">En sus portafolios: ${iv.portafolios.map(x=>esc(x.nombre)+" "+fmt(x.peso,1)+"%").join(" · ")}</span>`:""}
+      <span class="det">Reunión mensual Club InValor, ${esc(iv.fecha)}.${iv.nota?" "+esc(iv.nota):""}</span></div>`;
   }
   if(pr.central){
     h+=`<div class="obj${an&&an.promedio?"":" principal"}"><span class="etq">Proyección del Radar</span>
