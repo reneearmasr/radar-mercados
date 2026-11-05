@@ -243,11 +243,6 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
       <p class="aviso" id="al-msg"></p>
     </section>
 
-    <div class="dos">
-      <section class="panel" aria-labelledby="t-cal"><h3 id="t-cal">Próximos reportes</h3><ul class="cal" id="calendario"></ul></section>
-      <section class="panel" aria-labelledby="t-prueba"><h3 id="t-prueba">¿Funciona el puntaje?</h3><div id="prueba"></div></section>
-    </div>
-
     <section aria-label="Activos" class="lista" id="lista"></section>
     <div class="vacio" id="vacio" hidden>Aún no hay activos analizados. Escribe un ticker abajo o pídeselo a Claude en el chat.</div>
 
@@ -259,6 +254,11 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
       <button type="submit">Agregar</button>
       <div class="msg" id="msg">Acciones de EE. UU. por su ticker; materias primas: GC=F oro, SI=F plata, CL=F petróleo, HG=F cobre. Se analiza en la próxima actualización diaria.</div>
     </form>
+
+    <div class="dos">
+      <section class="panel" aria-labelledby="t-cal"><h3 id="t-cal">Próximos reportes</h3><ul class="cal" id="calendario"></ul></section>
+      <section class="panel" aria-labelledby="t-prueba"><h3 id="t-prueba">¿Funciona el puntaje?</h3><div id="prueba"></div></section>
+    </div>
 
     <p class="nota">Precios de Yahoo Finance con retraso. El puntaje combina señales técnicas (tendencia, promedios, RSI, MACD) y fundamentales (crecimiento, márgenes, rentabilidad, deuda, valoración) en una escala de −100 a +100. Los niveles de stop y objetivo son referenciales (2 y 3 veces el rango diario promedio). Es información para tu propio análisis, no una recomendación de compra o venta.</p>
   </div>
