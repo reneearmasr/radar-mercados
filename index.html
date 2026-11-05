@@ -159,6 +159,26 @@ form.alta .campo{padding:8px 10px;font-size:13px}
 .vivo b{color:var(--up);font-weight:500}
 #refrescar[disabled]{opacity:.6;cursor:wait}
 
+
+/* Luz que recorre el borde de los recuadros clave */
+@property --ang{syntax:"<angle>";initial-value:0deg;inherits:false}
+.obj.principal,.fila[aria-pressed="true"],.panel.luz{position:relative;isolation:isolate}
+.obj.principal::after,.fila[aria-pressed="true"]::after,.panel.luz::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;z-index:2;
+  background:conic-gradient(from var(--ang),transparent 0deg 250deg,var(--luz,var(--cyan)) 320deg,#ffffff 340deg,transparent 360deg);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;
+  mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  filter:drop-shadow(0 0 6px var(--luz,var(--cyan)));opacity:.9}
+.obj.principal{--luz:var(--amber)}
+.fila[aria-pressed="true"],.panel.luz{--luz:var(--cyan)}
+@media (prefers-reduced-motion:no-preference){
+  .obj.principal::after,.fila[aria-pressed="true"]::after,.panel.luz::after{animation:luz-giro 4.5s linear infinite}
+  .obj.principal:nth-child(2)::after{animation-delay:-2.2s}
+  .panel.luz::after{animation-duration:7s}
+}
+@media (prefers-reduced-motion:reduce){.obj.principal::after,.fila[aria-pressed="true"]::after,.panel.luz::after{--ang:300deg;opacity:.5}}
+@keyframes luz-giro{to{--ang:360deg}}
+
 /* Pedir */
 form.pedir{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:var(--panel);border:1px dashed var(--line-strong);border-radius:4px;padding:16px}
 form.pedir label{font-family:var(--f-mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--cyan);flex-basis:100%}
@@ -196,7 +216,7 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
   </form>
 
   <div id="app" hidden style="display:grid;gap:22px">
-    <section class="panel" aria-labelledby="t-cartera">
+    <section class="panel luz" aria-labelledby="t-cartera">
       <h3 id="t-cartera">Cartera</h3>
       <div class="fila-btn" style="align-items:center"><label for="ver-cartera" class="aviso">Ver cartera de</label><select class="campo" id="ver-cartera" style="width:auto;max-width:100%"></select></div>
       <div class="resumen" id="cartera-resumen"></div>
