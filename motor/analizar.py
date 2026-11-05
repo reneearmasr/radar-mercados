@@ -25,7 +25,12 @@ def precios(sym):
     q = res["indicators"]["quote"][0]
     filas = [(t, c, h, l, v) for t, c, h, l, v in zip(res["timestamp"], q["close"], q["high"], q["low"], q["volume"])
              if c is not None]
-    return res["meta"], filas
+    # A veces Yahoo deja el último día sin cierre: se completa con el precio de mercado de ese día
+    m = res["meta"]
+    if res["timestamp"] and q["close"][-1] is None and m.get("regularMarketPrice") and (not filas or res["timestamp"][-1] > filas[-1][0]):
+        filas.append((res["timestamp"][-1], m["regularMarketPrice"], m.get("regularMarketDayHigh"),
+                      m.get("regularMarketDayLow"), m.get("regularMarketVolume")))
+    return m, filas
 
 
 def sma(xs, n):
@@ -410,7 +415,8 @@ def valor_intrinseco(f, precio):
     """Método Value Investing: DCF de 10 años sobre el flujo de caja libre + número de Graham + margen de seguridad."""
     vi = f.get("_vi") or {}
     out = {"metodos": [], "supuestos": {}}
-    acciones = vi.get("acciones") or (f["capitalizacion"] / precio if f.get("capitalizacion") else None)
+    # Acciones equivalentes al precio cotizado (corrige ADR y clases de acciones): capitalización / precio
+    acciones = (f["capitalizacion"] / precio) if f.get("capitalizacion") else vi.get("acciones")
     caja, deuda = f.get("caja") or 0, f.get("deuda") or 0
 
     # 1) Flujo de caja descontado
@@ -451,6 +457,13 @@ def valor_intrinseco(f, precio):
     if not vals:
         out["aplica"] = False
         return out
+    if max(vals) > 4 * precio or min(vals) < 0.1 * precio:
+        out["aplica"] = False
+        out["dcf_motivo"] = "los datos financieros no son comparables con el precio (ADR, clase de acción o moneda distinta)"
+        out.pop("graham_motivo", None)
+        for k in ("dcf", "graham", "eps_ttm", "valor_libros_accion", "graham_nota"):
+            out.pop(k, None)
+        return out
     out["aplica"] = True
     out["valor"] = round(sum(vals) / len(vals), 2)
     m = (out["valor"] / precio - 1) * 100
@@ -468,8 +481,13 @@ def valor_intrinseco(f, precio):
     return out
 
 
+MONEDA_FIJA = {"INRETC1.LM": "USD"}
+
+
 def analizar(sym):
     meta, filas = precios(sym)
+    if not meta.get("currency"):
+        meta["currency"] = MONEDA_FIJA.get(sym, "PEN" if sym.endswith(".LM") else "USD")
     t = tecnico(filas, referencia("^GSPC"))
     f = None if sym in MATERIAS else fundamentales(sym, meta.get("currency", "USD"))
     total, etiqueta = sesgo(t["puntaje"], f and f["puntaje"])
