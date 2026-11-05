@@ -197,9 +197,11 @@ form.pedir .msg{font-size:12px;color:var(--muted);flex-basis:100%}
 
   <div id="app" hidden style="display:grid;gap:22px">
     <section class="panel" aria-labelledby="t-cartera">
-      <h3 id="t-cartera">Mi cartera</h3>
+      <h3 id="t-cartera">Cartera</h3>
+      <div class="fila-btn" style="align-items:center"><label for="ver-cartera" class="aviso">Ver cartera de</label><select class="campo" id="ver-cartera" style="width:auto;max-width:100%"></select></div>
       <div class="resumen" id="cartera-resumen"></div>
       <div class="tabla"><table id="cartera-tabla"></table></div>
+      <p class="aviso" id="solo-lectura" hidden>Estás viendo la cartera de otro usuario, solo lectura.</p>
       <form class="alta" id="alta">
         <label>Ticker o nombre<input class="campo" id="al-sym" maxlength="30" required placeholder="TMDX" list="al-lista" style="text-transform:uppercase"></label><datalist id="al-lista"></datalist>
         <label>Cantidad<input class="campo" id="al-cant" type="number" step="any" min="0" required></label>
@@ -438,17 +440,26 @@ function renderFicha(){
 }
 
 
-let cartera=[], estudio=null, pendientes=[], sb=null;
+let cartera=[], estudio=null, pendientes=[], sb=null, yo=null, usuarios=[], viendo=null;
 const fechaLarga=f=>{try{return new Date(f+"T12:00:00").toLocaleDateString("es-PE",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}catch(e){return f}};
 
+function renderSelector(){
+  const sel=$("#ver-cartera");if(!sel)return;
+  const lista=usuarios.length?usuarios:(yo?[{id:yo,correo:"Mi cartera"}]:[]);
+  sel.innerHTML=lista.map(u=>`<option value="${esc(u.id)}" ${u.id===viendo?"selected":""}>${u.id===yo?"Mi cartera":esc(u.correo)}</option>`).join("");
+  const propia=viendo===yo;$("#alta").hidden=!propia;$("#al-msg").hidden=!propia;$("#solo-lectura").hidden=propia;
+}
 function renderCartera(){
+  renderSelector();
+  const propia=viendo===yo;
+  const cartera=window.carteraTodas?window.carteraTodas.filter(c=>c.usuario===viendo):[];
   const dl=$("#al-lista");if(dl)dl.innerHTML=activos.filter(a=>!a.error).map(a=>`<option value="${esc(a.simbolo)}">${esc(a.nombre)}</option>`).join("");
   const precio=s=>{const a=activos.find(x=>x.simbolo===s);return a&&!a.error?pv(a).precio:null};
   const tc=(activos.find(a=>a.tipo_cambio_pen)||{}).tipo_cambio_pen;
   let inv=0,act=0,conPrecio=true;
   const filas=cartera.map(c=>{const p=precio(c.simbolo),costo=c.cantidad*c.precio_compra;inv+=costo;
     if(p==null){conPrecio=false;return{c,p,costo,valor:null}}const valor=c.cantidad*p;act+=valor;return{c,p,costo,valor}});
-  if(!cartera.length){$("#cartera-resumen").innerHTML="";$("#cartera-tabla").innerHTML=`<tbody><tr><td style="text-align:left;font-family:var(--f-body);color:var(--muted)">Todavía no registras compras. Agrega la primera con el formulario.</td></tr></tbody>`;return}
+  if(!cartera.length){$("#cartera-resumen").innerHTML="";$("#cartera-tabla").innerHTML=`<tbody><tr><td style="text-align:left;font-family:var(--f-body);color:var(--muted)">${propia?"Todavía no registras compras. Agrega la primera con el formulario.":"Este usuario todavía no registra compras."}</td></tr></tbody>`;return}
   const gp=act-inv,gpp=inv?gp/inv*100:0;
   $("#cartera-resumen").innerHTML=`<div><small>Invertido</small><b>${fmt(inv)}</b></div><div><small>Valor hoy</small><b>${fmt(act)}</b></div>
     <div><small>Ganancia / pérdida</small><b class="var ${gp>=0?"up":"down"}">${gp>=0?"+":""}${fmt(gp)} (${gp>=0?"+":""}${fmt(gpp,1)}%)</b></div>
@@ -459,7 +470,7 @@ function renderCartera(){
     return `<tr><td>${esc(c.simbolo)}</td><td>${fmt(c.cantidad,c.cantidad%1?2:0)}</td><td>${fmt(c.precio_compra)}</td><td>${p==null?"—":fmt(p)}</td><td>${valor==null?"—":fmt(valor)}</td>
       <td class="var ${g==null?"":g>=0?"up":"down"}">${g==null?"—":(g>=0?"+":"")+fmt(g)+" ("+(g>=0?"+":"")+fmt(gpc,1)+"%)"}</td><td>${peso==null?"—":fmt(peso,0)+"%"}</td>
       <td class="${ds!=null&&ds<3?"var down":""}">${c.stop?fmt(c.stop)+(ds!=null?" ("+fmt(ds,1)+"% arriba)":""):"—"}</td>
-      <td><button class="btn peligro chico" type="button" data-borrar="${c.id}">Quitar</button></td></tr>`}).join("")}</tbody>`;
+      <td>${propia?`<button class="btn peligro chico" type="button" data-borrar="${c.id}">Quitar</button>`:""}</td></tr>`}).join("")}</tbody>`;
   document.querySelectorAll("[data-borrar]").forEach(b=>b.onclick=async()=>{
     if(b.dataset.ok!=="1"){b.dataset.ok="1";b.textContent="¿Seguro?";setTimeout(()=>{if(b.isConnected){b.dataset.ok="";b.textContent="Quitar"}},4000);return}
     const {error}=await sb.from("cartera").delete().eq("id",+b.dataset.borrar);
@@ -495,17 +506,19 @@ function render(){
   renderLista();renderFicha();renderCartera();renderCalendario();renderPrueba();
 }
 
-async function cargarCartera(){const {data,error}=await sb.from("cartera").select("*").order("fecha");if(!error){cartera=data||[];renderCartera()}}
+async function cargarCartera(){const {data,error}=await sb.from("cartera").select("*").order("fecha");if(!error){window.carteraTodas=data||[];renderCartera()}}
 
 async function cargarTodo(){
-  const [ac,ca,es,so]=await Promise.all([
+  const [ac,ca,us,me,es,so]=await Promise.all([
     sb.from("activos").select("datos,orden").order("orden"),
     sb.from("cartera").select("*").order("fecha"),
+    sb.rpc("usuarios_cartera"),
+    sb.auth.getUser(),
     sb.from("estudios").select("datos").eq("id","backtest").maybeSingle(),
     sb.from("solicitudes").select("simbolo")]);
   if(ac.error){$("#actualizado").textContent="No se pudieron leer los datos ("+ac.error.message+").";return}
   activos=(ac.data||[]).map(x=>Object.assign({},x.datos,{orden:x.orden}));
-  cartera=ca.data||[];estudio=es.data?es.data.datos:null;pendientes=(so.data||[]).map(x=>x.simbolo);
+  window.carteraTodas=ca.data||[];yo=me.data&&me.data.user?me.data.user.id:null;usuarios=us.data||[];if(!viendo||!usuarios.some(u=>u.id===viendo))viendo=yo;estudio=es.data?es.data.datos:null;pendientes=(so.data||[]).map(x=>x.simbolo);
   if(!activos.length){$("#actualizado").textContent="Tu cuenta no tiene acceso a estos datos.";}
   if(pendientes.length)$("#msg").textContent="En cola: "+pendientes.join(", ")+". Se analizan en la próxima actualización (días hábiles, 7:40 a. m. de Lima).";
   render();
@@ -544,9 +557,10 @@ function mostrar(conSesion){$("#login").hidden=conSesion;$("#app").hidden=!conSe
     }catch(e){$("#actualizado").textContent="No se pudieron actualizar los precios. Intenta en un momento."}
     b.disabled=false;b.textContent="Actualizar precios";
   });
-  $("#salir").addEventListener("click",async()=>{await sb.auth.signOut();activos=[];cartera=[];mostrar(false);$("#actualizado").textContent="Sesión cerrada"});
+  $("#salir").addEventListener("click",async()=>{await sb.auth.signOut();activos=[];window.carteraTodas=[];yo=null;viendo=null;usuarios=[];mostrar(false);$("#actualizado").textContent="Sesión cerrada"});
 
   try{$("#al-fecha").value=new Date().toISOString().slice(0,10)}catch(e){}
+  $("#ver-cartera").addEventListener("change",e=>{viendo=e.target.value;renderCartera()});
   $("#alta").addEventListener("submit",async e=>{e.preventDefault();
     let sym=$("#al-sym").value.trim().toUpperCase();const cant=+$("#al-cant").value,pr=+$("#al-precio").value,st=$("#al-stop").value?+$("#al-stop").value:null;
     const msg=$("#al-msg");
